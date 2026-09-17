@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>수강생 사후관리 트래커 — 진로모아커리어센터</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard.css">
+<style>
+  :root{
+    --white:#FFFFFF;
+    --teal:#1F5C5C;
+    --teal-light:#E7F0EF;
+    --paper:#F6F7F5;
+    --line:#E3E6E2;
+    --ink:#20241F;
+    --muted:#6B756B;
+    --warn:#B45309;
+    --warn-bg:#FEF3E2;
+    --amber:#F5B34A;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:"Pretendard","Malgun Gothic","맑은 고딕",-apple-system,sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    line-height:1.6;
+  }
+  header{
+    background:var(--teal);
+    color:#fff;
+    padding:18px 20px 16px;
+  }
+  header .brand{font-size:12px;color:#BFE0DC;margin-bottom:4px;}
+  header .title-row{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  header h1{font-size:20px;margin:0;font-weight:600;}
+  header .role-badge{
+    font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;
+    background:var(--amber);color:#40260A;flex-shrink:0;
+  }
+  main{max-width:720px;margin:0 auto;padding:18px 16px 60px;width:100%;flex:1;}
+  .lead{color:var(--muted);font-size:13px;margin:4px 0 18px;}
+  .back-btn{background:none;border:none;color:var(--teal);font-size:13px;cursor:pointer;padding:6px 0;margin-bottom:6px;}
+
+  .top-cards{display:flex;flex-direction:column;gap:12px;}
+  .top-card{
+    background:var(--white);border:1px solid var(--line);border-left:4px solid var(--teal);
+    border-radius:8px;padding:18px;text-align:left;cursor:pointer;font-family:inherit;
+  }
+  .top-card h2{font-size:16px;margin:0 0 4px;}
+  .top-card p{font-size:13px;color:var(--muted);margin:0;}
+
+  .dash-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:18px;}
+  .dash-box{background:var(--white);border:1px solid var(--line);border-radius:8px;padding:14px;text-align:center;}
+  .dash-box .num{font-size:22px;font-weight:700;color:var(--teal);}
+  .dash-box .label{font-size:12px;color:var(--muted);margin-top:2px;}
+
+  .list-item{
+    background:var(--white);border:1px solid var(--line);border-radius:8px;
+    padding:14px 16px;margin-bottom:10px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px;
+  }
+  .list-item .li-name{font-weight:600;font-size:14px;}
+  .list-item .li-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+  .list-item .li-flag{font-size:11px;color:var(--warn);background:var(--warn-bg);padding:2px 8px;border-radius:999px;flex-shrink:0;}
+  .list-item .li-status{font-size:11px;color:var(--teal);background:var(--teal-light);padding:2px 8px;border-radius:999px;flex-shrink:0;}
+  .add-btn{
+    width:100%;padding:12px;border:1px dashed var(--teal);background:var(--teal-light);
+    color:var(--teal);border-radius:8px;font-family:inherit;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:14px;
+  }
+
+  label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin:14px 0 4px;}
+  input[type=text],input[type=tel],input[type=date],input[type=number],textarea,select{
+    width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;
+    font-family:inherit;font-size:14px;box-sizing:border-box;background:#fff;
+  }
+  textarea{resize:vertical;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .btn{
+    padding:11px 18px;border:none;border-radius:8px;font-family:inherit;font-size:14px;
+    font-weight:600;cursor:pointer;
+  }
+  .btn-primary{background:var(--teal);color:#fff;}
+  .btn-primary:disabled{background:#A9BBAF;cursor:default;}
+  .btn-outline{background:#fff;border:1px solid var(--line);color:var(--ink);}
+  .btn-danger{background:#fff;border:1px solid #E5A0A0;color:#B91C1C;}
+  .btn-row{display:flex;gap:8px;margin-top:18px;}
+  .care-toggle{display:flex;align-items:center;gap:8px;margin:14px 0 4px;}
+  .care-toggle input{width:auto;}
+
+  .consult-item{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:8px;}
+  .consult-item .c-date{font-size:11px;color:var(--muted);margin-bottom:4px;}
+
+  .qr-box{text-align:center;background:var(--white);border:1px solid var(--line);border-radius:8px;padding:20px;margin:14px 0;}
+  .qr-box #qr-canvas{display:flex;justify-content:center;margin-bottom:10px;}
+  .qr-box .qr-url{font-size:11px;color:var(--muted);word-break:break-all;}
+  .survey-count{font-size:13px;color:var(--teal);font-weight:600;margin-top:8px;}
+
+  /* ---- 공개 설문 화면 (학생용, 로그인 없음) ---- */
+  .survey-wrap{max-width:420px;margin:0 auto;padding:40px 20px;}
+  .survey-wrap h1{font-size:19px;text-align:center;margin-bottom:6px;}
+  .survey-wrap p.sub{text-align:center;color:var(--muted);font-size:13px;margin-bottom:26px;}
+  .stars{display:flex;justify-content:center;gap:6px;font-size:30px;margin-bottom:22px;cursor:pointer;}
+  .stars span{color:#D8DCD6;transition:color .1s;}
+  .stars span.on{color:var(--amber);}
+  .survey-done{text-align:center;padding:60px 20px;}
+  .survey-done .check{font-size:48px;margin-bottom:14px;}
+
+  .setup-card{
+    background:var(--white);border:1px solid var(--line);border-left:4px solid var(--teal);
+    border-radius:8px;padding:20px 18px;
+  }
+  .setup-card h3{font-size:16px;margin:0 0 10px;}
+  .setup-card p{font-size:13px;color:var(--muted);margin:0 0 14px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">진로모아커리어센터 · MOA FORMULA</div>
+  <div class="title-row">
+    <h1 id="header-title">수강생 사후관리 트래커</h1>
+    <span class="role-badge" id="role-badge">강사용</span>
+  </div>
+</header>
+
+<main id="main"></main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+const mainEl = document.getElementById('main');
+const params = new URLSearchParams(location.search);
+let TEACHER_ID = (params.get('t') || '').trim().toLowerCase().replace(/[^a-z0-9가-힣_-]/g, '').slice(0, 40);
+const PROGRAM_ID = params.get('p') || '';
+const IS_SURVEY = params.get('survey') === '1';
+
+function apiUrl(path){
+  const sep = path.includes('?') ? '&' : '?';
+  return path + sep + 't=' + encodeURIComponent(TEACHER_ID);
+}
+function escapeHtml(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function genId(prefix){ return prefix + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8); }
+
+/* =========================================================
+   공개 설문 화면 (학생 — 로그인 없음)
+========================================================= */
+function renderSurveyScreen(){
+  document.querySelector('header').style.display = 'none';
+  if(!TEACHER_ID || !PROGRAM_ID){
+    mainEl.innerHTML = '<div class="survey-wrap"><p class="sub">설문 링크가 올바르지 않아요. 강사님이 안내한 QR코드로 다시 접속해 주세요.</p></div>';
+    return;
+  }
+  let ratings = { satisfaction:0, attitude:0, helpfulness:0 };
+  mainEl.innerHTML = `
+    <div class="survey-wrap">
+      <h1>오늘 강의, 어떠셨나요?</h1>
+      <p class="sub">30초면 끝나요. 솔직한 평가는 다음 강의를 더 좋게 만드는 데 큰 도움이 됩니다.</p>
+      <label>전반적인 만족도</label>
+      <div class="stars" data-field="satisfaction">${[1,2,3,4,5].map(n=>`<span data-v="${n}">★</span>`).join('')}</div>
+      <label>강사의 태도·전달력</label>
+      <div class="stars" data-field="attitude">${[1,2,3,4,5].map(n=>`<span data-v="${n}">★</span>`).join('')}</div>
+      <label>실제로 도움이 되었나요</label>
+      <div class="stars" data-field="helpfulness">${[1,2,3,4,5].map(n=>`<span data-v="${n}">★</span>`).join('')}</div>
+      <label>한줄 코멘트 (선택)</label>
+      <textarea id="survey-comment" rows="3" placeholder="좋았던 점, 아쉬웠던 점을 자유롭게 남겨주세요."></textarea>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="survey-submit" style="width:100%">제출하기</button>
+      </div>
+    </div>
+  `;
+  document.querySelectorAll('.stars').forEach(starsEl => {
+    const field = starsEl.getAttribute('data-field');
+    starsEl.querySelectorAll('span').forEach(s => {
+      s.addEventListener('click', () => {
+        const v = parseInt(s.getAttribute('data-v'), 10);
+        ratings[field] = v;
+        starsEl.querySelectorAll('span').forEach(s2 => {
+          s2.classList.toggle('on', parseInt(s2.getAttribute('data-v'),10) <= v);
+        });
+      });
+    });
+  });
+  document.getElementById('survey-submit').addEventListener('click', async () => {
+    if(!ratings.satisfaction || !ratings.attitude || !ratings.helpfulness){
+      alert('별점 3가지를 모두 선택해 주세요.');
+      return;
+    }
+    const btn = document.getElementById('survey-submit');
+    btn.disabled = true; btn.textContent = '제출 중...';
+    try{
+      const res = await fetch(apiUrl('/api/survey?p=' + encodeURIComponent(PROGRAM_ID)), {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ ...ratings, comment: document.getElementById('survey-comment').value.trim() })
+      });
+      if(!res.ok) throw new Error('submit failed');
+      mainEl.innerHTML = `<div class="survey-done"><div class="check">🙏</div><p>소중한 의견 감사합니다!</p></div>`;
+    }catch(err){
+      console.error(err);
+      alert('제출 중 문제가 발생했어요. 다시 시도해 주세요.');
+      btn.disabled = false; btn.textContent = '제출하기';
+    }
+  });
+}
+
+/* =========================================================
+   강사 코드 설정 (미설정 시)
+========================================================= */
+function renderTeacherSetup(){
+  mainEl.innerHTML = `
+    <div class="setup-card">
+      <h3>강사 코드 설정</h3>
+      <p>여러 강사님이 함께 쓰기 때문에 자료가 섞이지 않도록 <b>본인만의 고유 코드</b>가 필요합니다. 영문·숫자로 짧게 만들어 주세요 (예: kimteacher). 한 번 정하면 계속 같은 코드로 접속하시면 됩니다.</p>
+      <input type="text" id="teacher-code-input" placeholder="예: kimteacher">
+      <div class="btn-row"><button class="btn btn-primary" id="teacher-code-submit" style="width:100%">시작하기</button></div>
+    </div>
+  `;
+  document.getElementById('teacher-code-submit').addEventListener('click', () => {
+    const code = document.getElementById('teacher-code-input').value.trim().toLowerCase().replace(/[^a-z0-9가-힣_-]/g, '');
+    if(!code){ alert('코드를 입력해 주세요.'); return; }
+    location.href = location.pathname + '?t=' + encodeURIComponent(code);
+  });
+}
+
+/* =========================================================
+   홈 화면
+========================================================= */
+function renderHome(){
+  document.getElementById('header-title').textContent = '수강생 사후관리 트래커';
+  document.getElementById('role-badge').textContent = '강사용 · ' + TEACHER_ID;
+  mainEl.innerHTML = `
+    <p class="lead">세심하게 챙길 개인 케어와, 사업 실적으로 쌓을 기관 데이터를 나눠서 관리해요.</p>
+    <div class="top-cards">
+      <button class="top-card" id="go-students">
+        <h2>👤 개인관리</h2>
+        <p>수강생 한 명 한 명의 상담 이력·다음 확인일·취업 결과를 추적해요.</p>
+      </button>
+      <button class="top-card" id="go-programs">
+        <h2>🏢 진로모아관리</h2>
+        <p>기관·강의별 실적, 만족도 설문(QR) 결과를 모아 제안서·사업실적 자료로 씁니다.</p>
+      </button>
+    </div>
+  `;
+  document.getElementById('go-students').onclick = () => { history.pushState({screen:'students'},''); renderStudentList(); };
+  document.getElementById('go-programs').onclick = () => { history.pushState({screen:'programs'},''); renderProgramList(); };
+}
+
+/* =========================================================
+   개인관리 — 목록
+========================================================= */
+async function renderStudentList(){
+  document.getElementById('header-title').textContent = '개인관리';
+  mainEl.innerHTML = '<button class="back-btn" id="back">← 홈으로</button><div id="student-list-body">불러오는 중...</div>';
+  document.getElementById('back').onclick = () => { history.pushState({screen:'home'},''); renderHome(); };
+  try{
+    const res = await fetch(apiUrl('/api/students?list=1'));
+    const data = await res.json();
+    const items = data.items || [];
+    const body = document.getElementById('student-list-body');
+    body.innerHTML = '<button class="add-btn" id="add-student">+ 수강생 추가</button><div id="student-items"></div>';
+    document.getElementById('add-student').onclick = () => renderStudentDetail(null);
+    const list = document.getElementById('student-items');
+    if(items.length === 0){
+      list.innerHTML = '<p class="lead">아직 등록된 수강생이 없어요.</p>';
+    }
+    items.sort((a,b)=> (a.nextCheckDate||'9999').localeCompare(b.nextCheckDate||'9999'));
+    items.forEach(item => {
+      const overdue = item.nextCheckDate && item.nextCheckDate < new Date().toISOString().slice(0,10);
+      const div = document.createElement('div');
+      div.className = 'list-item';
+      div.innerHTML = `
+        <div>
+          <div class="li-name">${escapeHtml(item.name)} ${item.careFlag ? '⭐' : ''}</div>
+          <div class="li-sub">${escapeHtml(item.org||'')} · ${escapeHtml(item.program||'')}${item.nextCheckDate ? ' · 다음확인 ' + escapeHtml(item.nextCheckDate) : ''}</div>
+        </div>
+        ${overdue ? '<span class="li-flag">확인 필요</span>' : `<span class="li-status">${escapeHtml(item.status||'관리중')}</span>`}
+      `;
+      div.onclick = () => renderStudentDetail(item.id);
+      list.appendChild(div);
+    });
+  }catch(err){
+    console.error(err);
+    document.getElementById('student-list-body').innerHTML = '<p class="lead">목록을 불러오지 못했어요.</p>';
+  }
+}
+
+async function renderStudentDetail(id){
+  document.getElementById('header-title').textContent = id ? '수강생 상세' : '수강생 추가';
+  mainEl.innerHTML = '<button class="back-btn" id="back">← 목록으로</button><div id="detail-body">불러오는 중...</div>';
+  document.getElementById('back').onclick = renderStudentList;
+
+  let record = {
+    id: null, name:'', contact:'', org:'', program:'', startDate:'', status:'신규',
+    nextCheckDate:'', careFlag:false, satisfaction:'', employmentStatus:'', company:'',
+    consultLog: [], createdAt: new Date().toISOString()
+  };
+
+  if(id){
+    try{
+      const res = await fetch(apiUrl('/api/students?id=' + encodeURIComponent(id)));
+      const data = await res.json();
+      if(data.record) record = data.record;
+    }catch(err){ console.error(err); }
+  }
+
+  const body = document.getElementById('detail-body');
+  body.innerHTML = `
+    <label>이름</label><input type="text" id="f-name" value="${escapeHtml(record.name)}">
+    <div class="row2">
+      <div><label>연락처</label><input type="tel" id="f-contact" value="${escapeHtml(record.contact)}"></div>
+      <div><label>소속(학교/기관)</label><input type="text" id="f-org" value="${escapeHtml(record.org)}"></div>
+    </div>
+    <div class="row2">
+      <div><label>참여 프로그램</label><input type="text" id="f-program" value="${escapeHtml(record.program)}"></div>
+      <div><label>시작일</label><input type="date" id="f-startDate" value="${escapeHtml(record.startDate)}"></div>
+    </div>
+    <div class="row2">
+      <div><label>상태</label>
+        <select id="f-status">
+          ${['신규','관리중','종결'].map(s=>`<option ${record.status===s?'selected':''}>${s}</option>`).join('')}
+        </select>
+      </div>
+      <div><label>다음 확인 예정일</label><input type="date" id="f-nextCheckDate" value="${escapeHtml(record.nextCheckDate)}"></div>
+    </div>
+    <div class="care-toggle">
+      <input type="checkbox" id="f-careFlag" ${record.careFlag ? 'checked' : ''}>
+      <label style="margin:0">⭐ 우선/세심 관리 대상으로 표시</label>
+    </div>
+    <div class="row2">
+      <div><label>만족도(1~5, 선택)</label><input type="number" min="1" max="5" id="f-satisfaction" value="${escapeHtml(record.satisfaction)}"></div>
+      <div><label>취업 상태(선택)</label><input type="text" id="f-employmentStatus" placeholder="예: 재직중/구직중" value="${escapeHtml(record.employmentStatus)}"></div>
+    </div>
+    <label>합격기업/직무(선택)</label><input type="text" id="f-company" value="${escapeHtml(record.company)}">
+
+    <label>상담 이력</label>
+    <div id="consult-log">
+      ${(record.consultLog||[]).slice().reverse().map(c => `
+        <div class="consult-item"><div class="c-date">${escapeHtml(c.date)}</div><div>${escapeHtml(c.memo)}</div></div>
+      `).join('') || '<p class="lead" style="margin:4px 0">아직 상담 기록이 없어요.</p>'}
+    </div>
+    <textarea id="new-consult" rows="2" placeholder="오늘 상담 내용을 남겨주세요"></textarea>
+    <div class="btn-row"><button class="btn btn-outline" id="add-consult" style="width:100%">+ 상담 기록 추가</button></div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="save-student" style="flex:1">저장하기</button>
+      ${id ? '<button class="btn btn-danger" id="delete-student">삭제</button>' : ''}
+    </div>
+  `;
+
+  document.getElementById('add-consult').onclick = () => {
+    const memo = document.getElementById('new-consult').value.trim();
+    if(!memo) return;
+    record.consultLog = record.consultLog || [];
+    record.consultLog.push({ date: new Date().toISOString().slice(0,10), memo });
+    renderStudentDetailWithRecord(record, id);
+  };
+
+  document.getElementById('save-student').onclick = async () => {
+    const btn = document.getElementById('save-student');
+    btn.disabled = true; btn.textContent = '저장 중...';
+    const payload = {
+      id: record.id || genId('stu'),
+      name: document.getElementById('f-name').value.trim(),
+      contact: document.getElementById('f-contact').value.trim(),
+      org: document.getElementById('f-org').value.trim(),
+      program: document.getElementById('f-program').value.trim(),
+      startDate: document.getElementById('f-startDate').value,
+      status: document.getElementById('f-status').value,
+      nextCheckDate: document.getElementById('f-nextCheckDate').value,
+      careFlag: document.getElementById('f-careFlag').checked,
+      satisfaction: document.getElementById('f-satisfaction').value,
+      employmentStatus: document.getElementById('f-employmentStatus').value.trim(),
+      company: document.getElementById('f-company').value.trim(),
+      consultLog: record.consultLog || [],
+      createdAt: record.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    if(!payload.name){ alert('이름을 입력해 주세요.'); btn.disabled=false; btn.textContent='저장하기'; return; }
+    try{
+      await fetch(apiUrl('/api/students'), {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+      });
+      renderStudentList();
+    }catch(err){
+      console.error(err);
+      alert('저장 중 문제가 발생했어요.');
+      btn.disabled = false; btn.textContent = '저장하기';
+    }
+  };
+
+  if(id){
+    document.getElementById('delete-student').onclick = async () => {
+      if(!confirm('정말 삭제할까요?')) return;
+      try{
+        await fetch(apiUrl('/api/students?id=' + encodeURIComponent(id)), { method:'DELETE' });
+        renderStudentList();
+      }catch(err){ console.error(err); alert('삭제 중 문제가 발생했어요.'); }
+    };
+  }
+
+  function renderStudentDetailWithRecord(rec){
+    // 상담 기록 추가 후 화면만 다시 그림 (서버 저장은 '저장하기' 버튼에서)
+    const logEl = document.getElementById('consult-log');
+    logEl.innerHTML = (rec.consultLog||[]).slice().reverse().map(c => `
+      <div class="consult-item"><div class="c-date">${escapeHtml(c.date)}</div><div>${escapeHtml(c.memo)}</div></div>
+    `).join('');
+    document.getElementById('new-consult').value = '';
+  }
+}
+
+/* =========================================================
+   진로모아관리 — 대시보드 + 목록
+========================================================= */
+async function renderProgramList(){
+  document.getElementById('header-title').textContent = '진로모아관리';
+  mainEl.innerHTML = '<button class="back-btn" id="back">← 홈으로</button><div id="program-list-body">불러오는 중...</div>';
+  document.getElementById('back').onclick = () => { history.pushState({screen:'home'},''); renderHome(); };
+  try{
+    const res = await fetch(apiUrl('/api/programs?list=1'));
+    const data = await res.json();
+    const items = data.items || [];
+    const orgSet = new Set(items.map(i=>i.orgName).filter(Boolean));
+    const totalParticipants = items.reduce((s,i)=> s + (parseInt(i.participantCount,10)||0), 0);
+    const satisfactions = items.map(i=>parseFloat(i.avgSatisfaction)).filter(n=>!isNaN(n));
+    const avgSat = satisfactions.length ? (satisfactions.reduce((a,b)=>a+b,0)/satisfactions.length).toFixed(1) : '-';
+
+    const body = document.getElementById('program-list-body');
+    body.innerHTML = `
+      <div class="dash-grid">
+        <div class="dash-box"><div class="num">${orgSet.size}</div><div class="label">협업 기관 수</div></div>
+        <div class="dash-box"><div class="num">${items.length}</div><div class="label">누적 프로그램 수</div></div>
+        <div class="dash-box"><div class="num">${totalParticipants}</div><div class="label">누적 참여 인원</div></div>
+        <div class="dash-box"><div class="num">${avgSat}</div><div class="label">평균 만족도(설문)</div></div>
+      </div>
+      <button class="add-btn" id="add-program">+ 프로그램(강의) 추가</button>
+      <div id="program-items"></div>
+    `;
+    document.getElementById('add-program').onclick = () => renderProgramDetail(null);
+    const list = document.getElementById('program-items');
+    if(items.length === 0){
+      list.innerHTML = '<p class="lead">아직 등록된 프로그램이 없어요.</p>';
+    }
+    items.sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+    items.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'list-item';
+      div.innerHTML = `
+        <div>
+          <div class="li-name">${escapeHtml(item.orgName)} · ${escapeHtml(item.programName)}</div>
+          <div class="li-sub">${escapeHtml(item.date||'')} · 참여 ${escapeHtml(item.participantCount||'-')}명</div>
+        </div>
+      `;
+      div.onclick = () => renderProgramDetail(item.id);
+      list.appendChild(div);
+    });
+  }catch(err){
+    console.error(err);
+    document.getElementById('program-list-body').innerHTML = '<p class="lead">목록을 불러오지 못했어요.</p>';
+  }
+}
+
+async function renderProgramDetail(id){
+  document.getElementById('header-title').textContent = id ? '프로그램 상세' : '프로그램 추가';
+  mainEl.innerHTML = '<button class="back-btn" id="back">← 목록으로</button><div id="detail-body">불러오는 중...</div>';
+  document.getElementById('back').onclick = renderProgramList;
+
+  let record = {
+    id:null, orgName:'', contactPerson:'', contactPhone:'', field:'', programName:'',
+    date:'', hours:'', participantCount:'', feedbackNotes:'', renewalIntent:'미정',
+    proposalNotes:'', avgSatisfaction:'', createdAt: new Date().toISOString()
+  };
+  if(id){
+    try{
+      const res = await fetch(apiUrl('/api/programs?id=' + encodeURIComponent(id)));
+      const data = await res.json();
+      if(data.record) record = data.record;
+    }catch(err){ console.error(err); }
+  }
+
+  const body = document.getElementById('detail-body');
+  body.innerHTML = `
+    <div class="row2">
+      <div><label>기관명(학교/업체)</label><input type="text" id="f-orgName" value="${escapeHtml(record.orgName)}"></div>
+      <div><label>분야</label><input type="text" id="f-field" placeholder="예: 보건계열/사회복지" value="${escapeHtml(record.field)}"></div>
+    </div>
+    <div class="row2">
+      <div><label>담당자명</label><input type="text" id="f-contactPerson" value="${escapeHtml(record.contactPerson)}"></div>
+      <div><label>담당자 연락처</label><input type="tel" id="f-contactPhone" value="${escapeHtml(record.contactPhone)}"></div>
+    </div>
+    <label>프로그램(강의)명</label><input type="text" id="f-programName" value="${escapeHtml(record.programName)}">
+    <div class="row2">
+      <div><label>진행일자</label><input type="date" id="f-date" value="${escapeHtml(record.date)}"></div>
+      <div><label>강의시간(시간)</label><input type="number" id="f-hours" value="${escapeHtml(record.hours)}"></div>
+    </div>
+    <label>참여 인원수</label><input type="number" id="f-participantCount" value="${escapeHtml(record.participantCount)}">
+    <label>재계약 의향</label>
+    <select id="f-renewalIntent">
+      ${['있음','미정','없음'].map(s=>`<option ${record.renewalIntent===s?'selected':''}>${s}</option>`).join('')}
+    </select>
+    <label>담당자 후기 / 특이사항</label><textarea id="f-feedbackNotes" rows="2">${escapeHtml(record.feedbackNotes)}</textarea>
+    <label>제안서용 메모</label><textarea id="f-proposalNotes" rows="2">${escapeHtml(record.proposalNotes)}</textarea>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="save-program" style="flex:1">저장하기</button>
+      ${id ? '<button class="btn btn-danger" id="delete-program">삭제</button>' : ''}
+    </div>
+
+    ${id ? `
+      <div class="qr-box">
+        <div style="font-weight:600;margin-bottom:10px;">만족도 설문 QR</div>
+        <div id="qr-canvas"></div>
+        <div class="qr-url" id="qr-url"></div>
+        <div class="survey-count" id="survey-count">응답 집계 중...</div>
+      </div>
+    ` : '<p class="lead">저장한 뒤에 설문 QR코드가 생성돼요.</p>'}
+  `;
+
+  if(id){
+    const surveyUrl = location.origin + location.pathname + '?survey=1&t=' + encodeURIComponent(TEACHER_ID) + '&p=' + encodeURIComponent(id);
+    document.getElementById('qr-url').textContent = surveyUrl;
+    try{
+      new QRCode(document.getElementById('qr-canvas'), {
+        text: surveyUrl, width:160, height:160, colorDark:'#1F5C5C', colorLight:'#FFFFFF'
+      });
+    }catch(err){ console.error(err); }
+    loadSurveyStats(id);
+  }
+
+  document.getElementById('save-program').onclick = async () => {
+    const btn = document.getElementById('save-program');
+    btn.disabled = true; btn.textContent = '저장 중...';
+    const payload = {
+      id: record.id || genId('prog'),
+      orgName: document.getElementById('f-orgName').value.trim(),
+      field: document.getElementById('f-field').value.trim(),
+      contactPerson: document.getElementById('f-contactPerson').value.trim(),
+      contactPhone: document.getElementById('f-contactPhone').value.trim(),
+      programName: document.getElementById('f-programName').value.trim(),
+      date: document.getElementById('f-date').value,
+      hours: document.getElementById('f-hours').value,
+      participantCount: document.getElementById('f-participantCount').value,
+      renewalIntent: document.getElementById('f-renewalIntent').value,
+      feedbackNotes: document.getElementById('f-feedbackNotes').value.trim(),
+      proposalNotes: document.getElementById('f-proposalNotes').value.trim(),
+      avgSatisfaction: record.avgSatisfaction || '',
+      createdAt: record.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    if(!payload.orgName || !payload.programName){ alert('기관명과 프로그램명은 입력해 주세요.'); btn.disabled=false; btn.textContent='저장하기'; return; }
+    try{
+      const res = await fetch(apiUrl('/api/programs'), {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      renderProgramDetail(payload.id);
+    }catch(err){
+      console.error(err);
+      alert('저장 중 문제가 발생했어요.');
+      btn.disabled = false; btn.textContent = '저장하기';
+    }
+  };
+
+  if(id){
+    document.getElementById('delete-program').onclick = async () => {
+      if(!confirm('정말 삭제할까요? 관련 설문 응답도 함께 사라져요.')) return;
+      try{
+        await fetch(apiUrl('/api/programs?id=' + encodeURIComponent(id)), { method:'DELETE' });
+        renderProgramList();
+      }catch(err){ console.error(err); alert('삭제 중 문제가 발생했어요.'); }
+    };
+  }
+}
+
+async function loadSurveyStats(programId){
+  try{
+    const res = await fetch(apiUrl('/api/survey?p=' + encodeURIComponent(programId) + '&list=1'));
+    const data = await res.json();
+    const items = data.items || [];
+    const el = document.getElementById('survey-count');
+    if(!el) return;
+    if(items.length === 0){
+      el.textContent = '아직 응답이 없어요.';
+      return;
+    }
+    const avg = (key) => (items.reduce((s,i)=>s+(i[key]||0),0) / items.length).toFixed(1);
+    el.innerHTML = `응답 ${items.length}건 · 만족도 평균 ${avg('satisfaction')} / 5.0`;
+
+    // 프로그램 레코드에 평균 만족도 자동 반영 (진로모아관리 대시보드 집계용)
+    try{
+      const progRes = await fetch(apiUrl('/api/programs?id=' + encodeURIComponent(programId)));
+      const progData = await progRes.json();
+      if(progData.record){
+        progData.record.avgSatisfaction = avg('satisfaction');
+        await fetch(apiUrl('/api/programs'), {
+          method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(progData.record)
+        });
+      }
+    }catch(e){ console.error(e); }
+  }catch(err){
+    console.error(err);
+    const el = document.getElementById('survey-count');
+    if(el) el.textContent = '응답 집계를 불러오지 못했어요.';
+  }
+}
+
+/* ---- Init ---- */
+(function init(){
+  if(IS_SURVEY){ renderSurveyScreen(); return; }
+  if(!TEACHER_ID){ renderTeacherSetup(); return; }
+  document.getElementById('role-badge').textContent = '강사용 · ' + TEACHER_ID;
+  history.replaceState({screen:'home'}, '');
+  renderHome();
+})();
+
+window.addEventListener('popstate', (e) => {
+  if(IS_SURVEY) return;
+  const state = e.state || { screen:'home' };
+  if(state.screen === 'students') renderStudentList();
+  else if(state.screen === 'programs') renderProgramList();
+  else renderHome();
+});
+</script>
+</body>
+</html>
