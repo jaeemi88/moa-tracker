@@ -738,7 +738,11 @@ async function loadSurveyStats(programId){
 /* ---- Init ---- */
 (function init(){
   if(IS_SURVEY){ renderSurveyScreen(); return; }
-  if(params.get('master') === '1'){ renderMasterTeacherList(); return; }
+  if(params.get('master') === '1'){
+    document.getElementById('role-badge').textContent = '관리자';
+    renderMasterTeacherList();
+    return;
+  }
   if(!TEACHER_ID){ renderTeacherSetup(); return; }
   document.getElementById('role-badge').textContent = '강사용 · ' + TEACHER_ID;
   history.replaceState({screen:'home'}, '');
