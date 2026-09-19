@@ -137,7 +137,6 @@ const params = new URLSearchParams(location.search);
 let TEACHER_ID = (params.get('t') || '').trim().toLowerCase().replace(/[^a-z0-9가-힣_-]/g, '').slice(0, 40);
 const PROGRAM_ID = params.get('p') || '';
 const IS_SURVEY = params.get('survey') === '1';
-let IS_BLOCKED = false;
 
 document.getElementById('header-title').addEventListener('click', () => {
   location.href = location.pathname + '?t=' + encodeURIComponent(TEACHER_ID);
@@ -151,36 +150,6 @@ function escapeHtml(s){
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 function genId(prefix){ return prefix + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8); }
-
-/* =========================================================
-   삭제(사용 중지)된 강사 코드 확인 — 확인에 실패하면 막지 않고 통과시킴
-========================================================= */
-async function isTeacherBlocked(code){
-  try{
-    const res = await fetch('/api/teacher-registry?check=' + encodeURIComponent(code));
-    if(!res.ok) return false;
-    const data = await res.json();
-    return !!data.blocked;
-  }catch(e){
-    return false;
-  }
-}
-
-function renderBlockedNotice(forTeacher){
-  IS_BLOCKED = true;
-  if(forTeacher){
-    document.getElementById('role-badge').textContent = '사용 중지';
-    mainEl.innerHTML = `
-      <div class="setup-card">
-        <h3>사용이 중지된 강사 코드예요</h3>
-        <p>원장님께 문의해 주세요.</p>
-      </div>
-    `;
-  } else {
-    document.querySelector('header').style.display = 'none';
-    mainEl.innerHTML = '<div class="survey-wrap"><p class="sub">이 설문 링크는 더 이상 사용할 수 없어요. 담당 강사님께 문의해 주세요.</p></div>';
-  }
-}
 
 /* =========================================================
    공개 설문 화면 (학생 — 로그인 없음)
@@ -457,7 +426,7 @@ async function renderStudentDetail(id){
   document.getElementById('back').onclick = renderStudentList;
 
   let record = {
-    id: null, name:'', contact:'', org:'', program:'', startDate:'', status:'신규',
+    id: null, name:'', contact:'', email:'', org:'', program:'', startDate:'', status:'신규',
     nextCheckDate:'', careFlag:false, satisfaction:'', employmentStatus:'', company:'',
     consultLog: [], createdAt: new Date().toISOString()
   };
@@ -476,6 +445,9 @@ async function renderStudentDetail(id){
     <div class="row2">
       <div><label>연락처</label><input type="tel" id="f-contact" value="${escapeHtml(record.contact)}"></div>
       <div><label>소속(학교/기관)</label><input type="text" id="f-org" value="${escapeHtml(record.org)}"></div>
+    </div>
+    <div class="row2">
+      <div><label>이메일 (선택 — 첨삭·모의면접 앱과 자동 연동용)</label><input type="email" id="f-email" value="${escapeHtml(record.email || '')}" placeholder="student@example.com"></div>
     </div>
     <div class="row2">
       <div><label>참여 프로그램</label><input type="text" id="f-program" value="${escapeHtml(record.program)}"></div>
@@ -502,7 +474,7 @@ async function renderStudentDetail(id){
     <label>상담 이력</label>
     <div id="consult-log">
       ${(record.consultLog||[]).slice().reverse().map(c => `
-        <div class="consult-item"><div class="c-date">${escapeHtml(c.date)}</div><div>${escapeHtml(c.memo)}</div></div>
+        <div class="consult-item"><div class="c-date">${escapeHtml(c.date)}${c.auto ? ' · <span style="color:var(--teal);font-weight:700">자동기록</span>' : ''}</div><div>${escapeHtml(c.memo)}</div></div>
       `).join('') || '<p class="lead" style="margin:4px 0">아직 상담 기록이 없어요.</p>'}
     </div>
     <textarea id="new-consult" rows="2" placeholder="오늘 상담 내용을 남겨주세요"></textarea>
@@ -529,6 +501,7 @@ async function renderStudentDetail(id){
       id: record.id || genId('stu'),
       name: document.getElementById('f-name').value.trim(),
       contact: document.getElementById('f-contact').value.trim(),
+      email: document.getElementById('f-email').value.trim(),
       org: document.getElementById('f-org').value.trim(),
       program: document.getElementById('f-program').value.trim(),
       startDate: document.getElementById('f-startDate').value,
@@ -569,7 +542,7 @@ async function renderStudentDetail(id){
     // 상담 기록 추가 후 화면만 다시 그림 (서버 저장은 '저장하기' 버튼에서)
     const logEl = document.getElementById('consult-log');
     logEl.innerHTML = (rec.consultLog||[]).slice().reverse().map(c => `
-      <div class="consult-item"><div class="c-date">${escapeHtml(c.date)}</div><div>${escapeHtml(c.memo)}</div></div>
+      <div class="consult-item"><div class="c-date">${escapeHtml(c.date)}${c.auto ? ' · <span style="color:var(--teal);font-weight:700">자동기록</span>' : ''}</div><div>${escapeHtml(c.memo)}</div></div>
     `).join('');
     document.getElementById('new-consult').value = '';
   }
@@ -771,26 +744,21 @@ async function loadSurveyStats(programId){
 }
 
 /* ---- Init ---- */
-(async function init(){
-  if(IS_SURVEY){
-    if(TEACHER_ID && await isTeacherBlocked(TEACHER_ID)){ renderBlockedNotice(false); return; }
-    renderSurveyScreen();
-    return;
-  }
+(function init(){
+  if(IS_SURVEY){ renderSurveyScreen(); return; }
   if(params.get('master') === '1'){
     document.getElementById('role-badge').textContent = '관리자';
     renderMasterTeacherList();
     return;
   }
   if(!TEACHER_ID){ renderTeacherSetup(); return; }
-  if(await isTeacherBlocked(TEACHER_ID)){ renderBlockedNotice(true); return; }
   document.getElementById('role-badge').textContent = '강사용 · ' + TEACHER_ID;
   history.replaceState({screen:'home'}, '');
   renderHome();
 })();
 
 window.addEventListener('popstate', (e) => {
-  if(IS_SURVEY || IS_BLOCKED) return;
+  if(IS_SURVEY) return;
   const state = e.state || { screen:'home' };
   if(state.screen === 'students') renderStudentList();
   else if(state.screen === 'programs') renderProgramList();
