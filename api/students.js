@@ -53,7 +53,8 @@ export default async function handler(req, res) {
       // 목록 화면에서 쓰는 요약 정보만 인덱스에 저장 (전체 상담이력은 개별 키에만)
       const summary = JSON.stringify({
         id: record.id, name: record.name, org: record.org, program: record.program,
-        status: record.status, nextCheckDate: record.nextCheckDate, careFlag: record.careFlag
+        status: record.status, nextCheckDate: record.nextCheckDate, careFlag: record.careFlag,
+        email: record.email || ''
       });
       await client.hset(indexKey, record.id, summary);
       return res.status(200).json({ ok: true, id: record.id });
