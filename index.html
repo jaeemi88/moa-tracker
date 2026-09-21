@@ -263,7 +263,19 @@ function renderTeacherSetup(){
       const data = await res.json();
       if(!res.ok) throw new Error(data.error || '등록에 실패했습니다.');
       localStorage.removeItem('moa_teacher_setup_draft');
-      location.href = location.pathname + '?t=' + encodeURIComponent(code);
+      const permanentLink = location.origin + location.pathname + '?t=' + encodeURIComponent(code);
+      mainEl.innerHTML = `
+        <div class="setup-card">
+          <h3>✅ 등록 완료!</h3>
+          <p style="font-size:14px;line-height:1.7">지금 보고 계신 카톡 링크는 <b>1회용 초대 링크</b>라 앞으로는 못 써요. 아래가 <b>${escapeHtml(name || code)}님만의 고정 주소</b>예요 — 꼭 복사해서 카톡 "나에게 보내기"로 저장해두시고, 다음부터는 이 주소로 들어와 주세요.</p>
+          <div style="display:flex;gap:8px;align-items:center;background:var(--teal-light);border-radius:8px;padding:10px 12px;margin-top:10px">
+            <span style="word-break:break-all;font-size:13px">${permanentLink}</span>
+            <button class="btn btn-secondary" style="margin-left:auto;flex-shrink:0" onclick="navigator.clipboard.writeText('${permanentLink}')">링크 복사</button>
+          </div>
+          <button class="btn btn-primary" id="goToDashboardBtn" style="margin-top:12px;width:100%">이 주소로 계속하기</button>
+        </div>
+      `;
+      document.getElementById('goToDashboardBtn').addEventListener('click', () => { location.href = permanentLink; });
     }catch(err){
       errEl.textContent = err.message;
       errEl.style.display = 'block';
