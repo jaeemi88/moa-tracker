@@ -264,6 +264,9 @@ function renderMasterTeacherList(){
       <p>원장님만 보실 수 있는 화면입니다. 새 강사님 한 분당 코드를 하나씩 발급해서 전달해 주세요. 한 번 쓰면 그 코드는 다시 못 씁니다.</p>
       <label>관리자 비밀번호</label>
       <input type="text" id="master-password-input" placeholder="관리자 비밀번호" style="margin-bottom:10px">
+      <label>초대코드 유효기간 (일)</label>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 6px">이 코드를 며칠 안에 등록해야 하는지 정해요. 일회성 강의를 위한 임시 강사라면 짧게(예: 7일), 정규 강사라면 비워두면 기간 제한 없이 유효해요.</p>
+      <input type="text" id="invite-expiry-input" placeholder="예) 7 (비워두면 무제한)" style="margin-bottom:10px">
       <div class="btn-row"><button class="btn btn-primary" id="gen-invite-btn" style="width:100%">초대코드 발급하기</button></div>
       <div id="gen-invite-error" style="color:#b91c1c;font-size:13px;margin-top:8px;display:none"></div>
       <div id="gen-invite-result" style="margin-top:12px;font-size:15px;font-weight:700;display:none"></div>
@@ -284,6 +287,7 @@ function renderMasterTeacherList(){
 
   document.getElementById('gen-invite-btn').addEventListener('click', async () => {
     const pw = document.getElementById('master-password-input').value;
+    const expiryDays = document.getElementById('invite-expiry-input').value.trim();
     const errEl = document.getElementById('gen-invite-error');
     const resultEl = document.getElementById('gen-invite-result');
     errEl.style.display = 'none'; resultEl.style.display = 'none';
@@ -291,11 +295,11 @@ function renderMasterTeacherList(){
       const res = await fetch('/api/teacher-registry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'generateInvite', master: pw })
+        body: JSON.stringify({ action: 'generateInvite', master: pw, expiryDays: expiryDays ? parseInt(expiryDays, 10) : 0 })
       });
       const data = await res.json();
       if(!res.ok) throw new Error(data.error || '발급에 실패했습니다.');
-      resultEl.textContent = '발급된 초대코드: ' + data.inviteCode;
+      resultEl.innerHTML = '발급된 초대코드: ' + data.inviteCode + (data.expiresAt ? `<br><span style="font-size:12px;font-weight:400;color:var(--muted)">유효기간: ${new Date(data.expiresAt).toLocaleDateString('ko-KR')}까지</span>` : `<br><span style="font-size:12px;font-weight:400;color:var(--muted)">유효기간: 무제한</span>`);
       resultEl.style.display = 'block';
     }catch(err){
       errEl.textContent = err.message;
@@ -346,8 +350,8 @@ function renderMasterTeacherList(){
       }
       resultEl.innerHTML = data.invites.map(iv => `
         <div style="border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin-bottom:8px">
-          <b>${iv.code}</b> ${iv.used ? '<span style="color:#b91c1c;font-size:12px">(사용됨 · ' + (iv.usedBy || '') + ')</span>' : '<span style="color:var(--teal);font-size:12px">(미사용)</span>'}<br>
-          <span style="font-size:12px;color:var(--muted)">발급일: ${new Date(iv.createdAt).toLocaleDateString('ko-KR')}</span>
+          <b>${iv.code}</b> ${iv.used ? '<span style="color:#b91c1c;font-size:12px">(사용됨 · ' + (iv.usedBy || '') + ')</span>' : iv.isExpired ? '<span style="color:#b91c1c;font-size:12px">(기간만료)</span>' : '<span style="color:var(--teal);font-size:12px">(미사용)</span>'}<br>
+          <span style="font-size:12px;color:var(--muted)">발급일: ${new Date(iv.createdAt).toLocaleDateString('ko-KR')}${iv.expiresAt ? ` · 유효기간: ${new Date(iv.expiresAt).toLocaleDateString('ko-KR')}까지` : ' · 유효기간: 무제한'}</span>
         </div>
       `).join('');
     }catch(err){
