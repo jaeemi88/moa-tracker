@@ -771,6 +771,7 @@ async function renderProgramDetail(id){
         <div style="font-weight:600;margin-bottom:10px;">만족도·소감 설문 QR</div>
         <div id="qr-canvas"></div>
         <div class="qr-url" id="qr-url"></div>
+        <button class="btn btn-outline" id="qr-copy" style="margin-top:8px;padding:7px 12px;font-size:12.5px">설문 주소 복사 (운영보드 연결용)</button>
         <div class="survey-count" id="survey-count">응답 집계 중...</div>
         <div id="survey-comments"></div>
       </div>
@@ -780,6 +781,10 @@ async function renderProgramDetail(id){
   if(id){
     const surveyUrl = location.origin + location.pathname + '?survey=1&t=' + encodeURIComponent(TEACHER_ID) + '&p=' + encodeURIComponent(id);
     document.getElementById('qr-url').textContent = surveyUrl;
+    document.getElementById('qr-copy').onclick = async () => {
+      try{ await navigator.clipboard.writeText(surveyUrl); alert('설문 주소를 복사했어요. 운영보드 강의의 "내용·결과" 탭에 붙여넣으세요.'); }
+      catch(e){ prompt('아래 주소를 길게 눌러 복사하세요', surveyUrl); }
+    };
     try{
       new QRCode(document.getElementById('qr-canvas'), {
         text: surveyUrl, width:160, height:160, colorDark:'#3D4500', colorLight:'#FFFFFF'
