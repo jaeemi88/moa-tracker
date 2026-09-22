@@ -30,7 +30,8 @@ export default async function handler(req, res) {
         satisfaction: Number(satisfaction),
         attitude: Number(attitude),
         helpfulness: Number(helpfulness),
-        comment: String(comment || '').slice(0, 500),
+        // 소감(수강생 소감문) — 최대 1000자까지 저장
+        comment: String(comment || '').slice(0, 1000),
         submittedAt: new Date().toISOString()
       });
       await client.lpush(indexKey, entry);
