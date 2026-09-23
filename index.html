@@ -4,44 +4,48 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>수강생 사후관리 트래커 — 진로모아커리어센터</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/static/pretendard.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800;900&display=swap">
+<meta name="theme-color" content="#C0D904">
 <style>
   :root{
     --white:#FFFFFF;
-    --teal:#10288C;
-    --teal-light:#E3E9FB;
+    --teal:#3D4500;
+    --teal-light:#EAF2AE;
     --paper:#F6F7F5;
     --line:#E3E6E2;
     --ink:#20241F;
     --muted:#6B756B;
     --warn:#B45309;
     --warn-bg:#FEF3E2;
-    --amber:#B6DB00;
+    --amber:#C0D904;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
-    font-family:"Pretendard","Malgun Gothic","맑은 고딕",-apple-system,sans-serif;
+    font-family:"Noto Sans KR","Malgun Gothic","맑은 고딕",-apple-system,sans-serif;
     background:var(--paper);
     color:var(--ink);
     min-height:100vh;
     display:flex;
     flex-direction:column;
     line-height:1.6;
+    word-break:keep-all;
+    overflow-wrap:break-word;
   }
   header{
-    background:var(--teal);
-    color:#fff;
+    background:#C0D904;
+    color:#3D4500;
     padding:18px 20px 16px;
   }
-  header .brand{font-size:12px;color:#BFE0DC;margin-bottom:4px;display:flex;align-items:center;gap:5px;}
+  header .brand{font-size:12px;color:#5A6400;margin-bottom:4px;display:flex;align-items:center;gap:5px;}
   header .brand .brand-logo{width:14px;height:14px;flex-shrink:0;}
-  header .brand .brand-name{color:#B6DB00;font-weight:700;}
+  header .brand .brand-name{color:#3D4500;font-weight:700;}
   header .title-row{display:flex;align-items:center;justify-content:space-between;gap:8px;}
   header h1{font-size:20px;margin:0;font-weight:600;}
   header .role-badge{
     font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;
-    background:var(--amber);color:#10288C;flex-shrink:0;
+    background:#3D4500;color:#EAF2AE;flex-shrink:0;
   }
   main{max-width:720px;margin:0 auto;padding:18px 16px 60px;width:100%;flex:1;}
   .lead{color:var(--muted);font-size:13px;margin:4px 0 18px;}
@@ -108,6 +112,14 @@
   .stars span{color:#D8DCD6;transition:color .1s;}
   .stars span.on{color:var(--amber);}
   .survey-done{text-align:center;padding:60px 20px;}
+  .survey-wrap .rv-guide{background:#F4F7E4;border-radius:8px;padding:10px 12px;font-size:12.5px;color:#4B5320;margin:0 0 8px;line-height:1.7}
+  .survey-wrap .rv-count{text-align:right;font-size:12px;color:var(--muted);margin-top:4px}
+  .rv-box{text-align:left;margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+  .rv-head{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+  .rv-head b{flex:1;font-size:14px;color:var(--ink)}
+  .rv-head .btn{padding:7px 11px;font-size:12.5px}
+  .rv-item{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:9px 11px;margin-bottom:7px;font-size:13.5px;line-height:1.6;white-space:pre-wrap;word-break:keep-all}
+  .rv-item small{display:block;color:var(--muted);font-size:11px;margin-bottom:2px}
   .survey-done .check{font-size:48px;margin-bottom:14px;}
 
   .setup-card{
@@ -143,26 +155,12 @@
 const mainEl = document.getElementById('main');
 const params = new URLSearchParams(location.search);
 let TEACHER_ID = (params.get('t') || '').trim().toLowerCase().replace(/[^a-z0-9가-힣_-]/g, '').slice(0, 40);
+try{ if(TEACHER_ID){ localStorage.setItem('moa_teacher_id', TEACHER_ID); } else if(!params.get('master')){ const __saved=(localStorage.getItem('moa_teacher_id')||'').trim(); if(__saved){ TEACHER_ID=__saved; const __u=new URL(location.href); __u.searchParams.set('t',__saved); history.replaceState(null,'',__u.toString()); } } }catch(e){}
 const PROGRAM_ID = params.get('p') || '';
 const IS_SURVEY = params.get('survey') === '1';
 let IS_BLOCKED = false;
 
-document.getElementById('header-title').addEventListener('click', () => {
-  location.href = location.pathname + '?t=' + encodeURIComponent(TEACHER_ID);
-});
-
-function apiUrl(path){
-  const sep = path.includes('?') ? '&' : '?';
-  return path + sep + 't=' + encodeURIComponent(TEACHER_ID);
-}
-function escapeHtml(s){
-  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-function genId(prefix){ return prefix + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8); }
-
-/* =========================================================
-   삭제(사용 중지)된 강사 코드 확인 — 확인에 실패하면 막지 않고 통과시킴
-========================================================= */
+/* 삭제(사용 중지)된 강사 코드 확인 — 확인에 실패하면 막지 않고 통과시킴 */
 async function isTeacherBlocked(code){
   try{
     const res = await fetch('/api/teacher-registry?check=' + encodeURIComponent(code));
@@ -190,11 +188,25 @@ function renderBlockedNotice(forTeacher){
   }
 }
 
+document.getElementById('header-title').addEventListener('click', () => {
+  location.href = location.pathname + '?t=' + encodeURIComponent(TEACHER_ID);
+});
+
+function apiUrl(path){
+  const sep = path.includes('?') ? '&' : '?';
+  return path + sep + 't=' + encodeURIComponent(TEACHER_ID);
+}
+function escapeHtml(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function genId(prefix){ return prefix + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8); }
+
 /* =========================================================
    공개 설문 화면 (학생 — 로그인 없음)
 ========================================================= */
 function renderSurveyScreen(){
   document.querySelector('header').style.display = 'none';
+  var hb=document.querySelector('.moa-hubbar'); if(hb) hb.style.display='none';
   if(!TEACHER_ID || !PROGRAM_ID){
     mainEl.innerHTML = '<div class="survey-wrap"><p class="sub">설문 링크가 올바르지 않아요. 강사님이 안내한 QR코드로 다시 접속해 주세요.</p></div>';
     return;
@@ -203,15 +215,17 @@ function renderSurveyScreen(){
   mainEl.innerHTML = `
     <div class="survey-wrap">
       <h1>오늘 강의, 어떠셨나요?</h1>
-      <p class="sub">30초면 끝나요. 솔직한 평가는 다음 강의를 더 좋게 만드는 데 큰 도움이 됩니다.</p>
+      <p class="sub">1분이면 끝나요. 별점과 짧은 소감을 남겨주세요. 이름은 받지 않아요.</p>
       <label>전반적인 만족도</label>
       <div class="stars" data-field="satisfaction">${[1,2,3,4,5].map(n=>`<span data-v="${n}">★</span>`).join('')}</div>
       <label>강사의 태도·전달력</label>
       <div class="stars" data-field="attitude">${[1,2,3,4,5].map(n=>`<span data-v="${n}">★</span>`).join('')}</div>
       <label>실제로 도움이 되었나요</label>
       <div class="stars" data-field="helpfulness">${[1,2,3,4,5].map(n=>`<span data-v="${n}">★</span>`).join('')}</div>
-      <label>한줄 코멘트 (선택)</label>
-      <textarea id="survey-comment" rows="3" placeholder="좋았던 점, 아쉬웠던 점을 자유롭게 남겨주세요."></textarea>
+      <label>오늘 강의 소감</label>
+      <div class="rv-guide">이런 내용을 적어주시면 좋아요<br>· 오늘 새롭게 알게 된 점<br>· 앞으로 해보고 싶은 것<br>· 강사님께 하고 싶은 말</div>
+      <textarea id="survey-comment" rows="5" maxlength="1000" placeholder="두세 문장이면 충분해요."></textarea>
+      <div class="rv-count" id="rv-count">0 / 1000</div>
       <div class="btn-row">
         <button class="btn btn-primary" id="survey-submit" style="width:100%">제출하기</button>
       </div>
@@ -229,9 +243,16 @@ function renderSurveyScreen(){
       });
     });
   });
+  const cmt = document.getElementById('survey-comment');
+  cmt.addEventListener('input', () => { document.getElementById('rv-count').textContent = cmt.value.length + ' / 1000'; });
   document.getElementById('survey-submit').addEventListener('click', async () => {
     if(!ratings.satisfaction || !ratings.attitude || !ratings.helpfulness){
       alert('별점 3가지를 모두 선택해 주세요.');
+      return;
+    }
+    if(cmt.value.trim().length < 5){
+      alert('소감을 한 문장 이상 적어주세요.');
+      cmt.focus();
       return;
     }
     const btn = document.getElementById('survey-submit');
@@ -256,20 +277,34 @@ function renderSurveyScreen(){
    강사 코드 설정 (미설정 시)
 ========================================================= */
 function renderTeacherSetup(){
+  const urlInvite = new URLSearchParams(location.search).get('invite') || '';
+  const draft = JSON.parse(localStorage.getItem('moa_teacher_setup_draft') || '{}');
   mainEl.innerHTML = `
     <div class="setup-card">
       <h3>강사 코드 설정</h3>
       <p>여러 강사님이 함께 쓰기 때문에 자료가 섞이지 않도록 <b>본인만의 고유 코드</b>가 필요합니다. 영문·숫자로 짧게 만들어 주세요 (예: kimteacher). 한 번 정하면 계속 같은 코드로 접속하시면 됩니다.</p>
       <label>강사 이름</label>
-      <input type="text" id="teacher-name-input" placeholder="예: 김강사" style="margin-bottom:10px">
+      <input type="text" id="teacher-name-input" placeholder="예: 김강사" style="margin-bottom:10px" value="${escapeHtml(draft.name || '')}">
       <label>강사 코드</label>
-      <input type="text" id="teacher-code-input" placeholder="예: kimteacher" style="margin-bottom:10px">
+      <input type="text" id="teacher-code-input" placeholder="예: kimteacher" style="margin-bottom:10px" value="${escapeHtml(draft.code || '')}">
       <label>초대코드 <span style="font-weight:400;color:var(--muted)">(처음 등록하는 코드일 때만 필요, 이미 등록된 코드면 비워두세요)</span></label>
-      <input type="text" id="teacher-invite-input" placeholder="원장님께 받은 초대코드" style="margin-bottom:10px">
+      <input type="text" id="teacher-invite-input" placeholder="원장님께 받은 초대코드" style="margin-bottom:10px" value="${escapeHtml(urlInvite || draft.invite || '')}">
       <div class="btn-row"><button class="btn btn-primary" id="teacher-code-submit" style="width:100%">시작하기</button></div>
       <div id="teacher-setup-error" style="color:#b91c1c;font-size:13px;margin-top:8px;display:none"></div>
     </div>
   `;
+
+  const saveDraft = () => {
+    localStorage.setItem('moa_teacher_setup_draft', JSON.stringify({
+      name: document.getElementById('teacher-name-input').value,
+      code: document.getElementById('teacher-code-input').value,
+      invite: document.getElementById('teacher-invite-input').value
+    }));
+  };
+  ['teacher-name-input', 'teacher-code-input', 'teacher-invite-input'].forEach(id => {
+    document.getElementById(id).addEventListener('input', saveDraft);
+  });
+
   document.getElementById('teacher-code-submit').addEventListener('click', async () => {
     const code = document.getElementById('teacher-code-input').value.trim().toLowerCase().replace(/[^a-z0-9가-힣_-]/g, '');
     const name = document.getElementById('teacher-name-input').value.trim();
@@ -287,13 +322,33 @@ function renderTeacherSetup(){
       });
       const data = await res.json();
       if(!res.ok) throw new Error(data.error || '등록에 실패했습니다.');
-      location.href = location.pathname + '?t=' + encodeURIComponent(code);
+      localStorage.removeItem('moa_teacher_setup_draft');
+      const permanentLink = location.origin + location.pathname + '?t=' + encodeURIComponent(code);
+      mainEl.innerHTML = `
+        <div class="setup-card">
+          <h3>✅ 등록 완료!</h3>
+          <p style="font-size:14px;line-height:1.7">지금 보고 계신 카톡 링크는 <b>1회용 초대 링크</b>라 앞으로는 못 써요. 아래가 <b>${escapeHtml(name || code)}님만의 고정 주소</b>예요 — 꼭 복사해서 카톡 "나에게 보내기"로 저장해두시고, 다음부터는 이 주소로 들어와 주세요.</p>
+          <div style="display:flex;gap:8px;align-items:center;background:var(--teal-light);border-radius:8px;padding:10px 12px;margin-top:10px">
+            <span style="word-break:break-all;font-size:13px">${permanentLink}</span>
+            <button class="btn btn-secondary" style="margin-left:auto;flex-shrink:0" onclick="navigator.clipboard.writeText('${permanentLink}')">링크 복사</button>
+          </div>
+          <button class="btn btn-primary" id="goToDashboardBtn" style="margin-top:12px;width:100%">이 주소로 계속하기</button>
+        </div>
+      `;
+      document.getElementById('goToDashboardBtn').addEventListener('click', () => { location.href = permanentLink; });
     }catch(err){
       errEl.textContent = err.message;
       errEl.style.display = 'block';
       btn.disabled = false; btn.textContent = '시작하기';
     }
   });
+}
+
+function daysRemainingText(expiresAt){
+  if(!expiresAt) return '무제한';
+  const diff = Math.ceil((expiresAt - Date.now()) / (24 * 60 * 60 * 1000));
+  if(diff <= 0) return '기간만료';
+  return `${diff}일 남음 (${new Date(expiresAt).toLocaleDateString('ko-KR')}까지)`;
 }
 
 function renderMasterTeacherList(){
@@ -303,6 +358,11 @@ function renderMasterTeacherList(){
       <p>원장님만 보실 수 있는 화면입니다. 새 강사님 한 분당 코드를 하나씩 발급해서 전달해 주세요. 한 번 쓰면 그 코드는 다시 못 씁니다.</p>
       <label>관리자 비밀번호</label>
       <input type="text" id="master-password-input" placeholder="관리자 비밀번호" style="margin-bottom:10px">
+      <label>발급 대상 메모 (선택, 예: 김민지 강사)</label>
+      <input type="text" id="invite-label-input" placeholder="누구에게 줄 코드인지 적어두면 목록에서 알아보기 쉬워요" style="margin-bottom:10px">
+      <label>초대코드 유효기간 (일)</label>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 6px">이 코드를 며칠 안에 등록해야 하는지 정해요. 일회성 강의를 위한 임시 강사라면 짧게(예: 7일), 정규 강사라면 비워두면 기간 제한 없이 유효해요.</p>
+      <input type="text" id="invite-expiry-input" placeholder="예) 7 (비워두면 무제한)" style="margin-bottom:10px">
       <div class="btn-row"><button class="btn btn-primary" id="gen-invite-btn" style="width:100%">초대코드 발급하기</button></div>
       <div id="gen-invite-error" style="color:#b91c1c;font-size:13px;margin-top:8px;display:none"></div>
       <div id="gen-invite-result" style="margin-top:12px;font-size:15px;font-weight:700;display:none"></div>
@@ -323,6 +383,8 @@ function renderMasterTeacherList(){
 
   document.getElementById('gen-invite-btn').addEventListener('click', async () => {
     const pw = document.getElementById('master-password-input').value;
+    const expiryDays = document.getElementById('invite-expiry-input').value.trim();
+    const label = document.getElementById('invite-label-input').value.trim();
     const errEl = document.getElementById('gen-invite-error');
     const resultEl = document.getElementById('gen-invite-result');
     errEl.style.display = 'none'; resultEl.style.display = 'none';
@@ -330,12 +392,21 @@ function renderMasterTeacherList(){
       const res = await fetch('/api/teacher-registry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'generateInvite', master: pw })
+        body: JSON.stringify({ action: 'generateInvite', master: pw, expiryDays: expiryDays ? parseInt(expiryDays, 10) : 0, label })
       });
       const data = await res.json();
       if(!res.ok) throw new Error(data.error || '발급에 실패했습니다.');
-      resultEl.textContent = '발급된 초대코드: ' + data.inviteCode;
+      const inviteLink = location.origin + location.pathname + '?invite=' + encodeURIComponent(data.inviteCode);
+      resultEl.innerHTML = `
+        <div>발급된 초대코드: ${data.inviteCode}${label ? ` <span style="font-weight:400;color:var(--teal)">(${escapeHtml(label)})</span>` : ''} <span style="font-weight:400;color:var(--muted);font-size:12px">(${daysRemainingText(data.expiresAt)})</span></div>
+        <div style="display:flex;gap:8px;align-items:center;background:var(--teal-light);border-radius:8px;padding:10px 12px;margin-top:8px">
+          <span style="word-break:break-all;font-weight:400;font-size:13px">${inviteLink}</span>
+          <button class="btn btn-secondary" style="margin-left:auto;flex-shrink:0" onclick="navigator.clipboard.writeText('${inviteLink}')">링크 복사</button>
+        </div>
+        <p style="font-size:12px;color:var(--muted);font-weight:400;margin:6px 0 0">이 링크 하나만 보내주세요 — 강사님이 열면 초대코드가 자동으로 입력되어 있어요.</p>
+      `;
       resultEl.style.display = 'block';
+      document.getElementById('invite-label-input').value = '';
     }catch(err){
       errEl.textContent = err.message;
       errEl.style.display = 'block';
@@ -356,12 +427,31 @@ function renderMasterTeacherList(){
         resultEl.innerHTML = '<p class="lead">아직 등록된 강사가 없습니다.</p>';
         return;
       }
-      resultEl.innerHTML = data.teachers.map(t => `
-        <div style="border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin-bottom:8px">
-          <b>${t.name}</b> <span style="color:var(--muted);font-size:12px">(코드: ${t.code})</span><br>
-          <span style="font-size:12px;color:var(--muted)">등록일: ${new Date(t.approvedAt).toLocaleDateString('ko-KR')} · 첫 등록 앱: ${t.firstApp || '-'}</span>
-        </div>
-      `).join('');
+      resultEl.innerHTML = '';
+      data.teachers.forEach(t => {
+        const row = document.createElement('div');
+        row.style.cssText = 'border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap';
+        row.innerHTML = `
+          <div>
+            <b>${escapeHtml(t.name)}</b> <span style="color:var(--muted);font-size:12px">(코드: ${escapeHtml(t.code)})</span><br>
+            <span style="font-size:12px;color:var(--muted)">등록일: ${new Date(t.approvedAt).toLocaleDateString('ko-KR')} · 첫 등록 앱: ${t.firstApp || '-'}</span>
+          </div>
+          <button class="btn btn-danger del-teacher-btn" style="flex-shrink:0">삭제</button>
+        `;
+        row.querySelector('.del-teacher-btn').addEventListener('click', async () => {
+          if(!confirm(`"${t.name}"(${t.code}) 강사를 삭제할까요? 접속이 차단되고, 기록은 그대로 보관됩니다.`)) return;
+          try{
+            const r = await fetch('/api/teacher-registry', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'deleteTeacher', master: pw, code: t.code })
+            });
+            const d = await r.json();
+            if(!r.ok) throw new Error(d.error || '삭제에 실패했습니다.');
+            row.remove();
+          }catch(e){ alert('삭제 실패: ' + e.message); }
+        });
+        resultEl.appendChild(row);
+      });
     }catch(err){
       errEl.textContent = err.message;
       errEl.style.display = 'block';
@@ -383,12 +473,34 @@ function renderMasterTeacherList(){
         resultEl.innerHTML = '<p class="lead">아직 발급된 초대코드가 없습니다.</p>';
         return;
       }
-      resultEl.innerHTML = data.invites.map(iv => `
-        <div style="border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin-bottom:8px">
-          <b>${iv.code}</b> ${iv.used ? '<span style="color:#b91c1c;font-size:12px">(사용됨 · ' + (iv.usedBy || '') + ')</span>' : '<span style="color:var(--teal);font-size:12px">(미사용)</span>'}<br>
-          <span style="font-size:12px;color:var(--muted)">발급일: ${new Date(iv.createdAt).toLocaleDateString('ko-KR')}</span>
-        </div>
-      `).join('');
+      resultEl.innerHTML = '';
+      data.invites.forEach(iv => {
+        const row = document.createElement('div');
+        row.style.cssText = 'border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap';
+        const statusHtml = iv.used ? '<span style="color:#b91c1c;font-size:12px">(사용됨 · ' + escapeHtml(iv.usedBy || '') + ')</span>' : iv.isExpired ? '<span style="color:#b91c1c;font-size:12px">(기간만료)</span>' : '<span style="color:var(--teal);font-size:12px">(미사용)</span>';
+        row.innerHTML = `
+          <div>
+            <b>${iv.code}</b>${iv.label ? ` <span style="color:var(--teal);font-size:12px">(${escapeHtml(iv.label)})</span>` : ''} ${statusHtml}<br>
+            <span style="font-size:12px;color:var(--muted)">발급일: ${new Date(iv.createdAt).toLocaleDateString('ko-KR')} · 유효기간: ${daysRemainingText(iv.expiresAt)}</span>
+          </div>
+          ${!iv.used ? '<button class="btn btn-danger del-invite-btn" style="flex-shrink:0">취소</button>' : ''}
+        `;
+        if(!iv.used){
+          row.querySelector('.del-invite-btn').addEventListener('click', async () => {
+            if(!confirm(`초대코드 "${iv.code}"를 취소할까요?`)) return;
+            try{
+              const r = await fetch('/api/teacher-registry', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'cancelInvite', master: pw, inviteCode: iv.code })
+              });
+              const d = await r.json();
+              if(!r.ok) throw new Error(d.error || '취소에 실패했습니다.');
+              row.remove();
+            }catch(e){ alert('취소 실패: ' + e.message); }
+          });
+        }
+        resultEl.appendChild(row);
+      });
     }catch(err){
       errEl.textContent = err.message;
       errEl.style.display = 'block';
@@ -465,7 +577,7 @@ async function renderStudentDetail(id){
   document.getElementById('back').onclick = renderStudentList;
 
   let record = {
-    id: null, name:'', contact:'', org:'', program:'', startDate:'', status:'신규',
+    id: null, name:'', contact:'', email:'', org:'', program:'', startDate:'', status:'신규',
     nextCheckDate:'', careFlag:false, satisfaction:'', employmentStatus:'', company:'',
     consultLog: [], createdAt: new Date().toISOString()
   };
@@ -484,6 +596,9 @@ async function renderStudentDetail(id){
     <div class="row2">
       <div><label>연락처</label><input type="tel" id="f-contact" value="${escapeHtml(record.contact)}"></div>
       <div><label>소속(학교/기관)</label><input type="text" id="f-org" value="${escapeHtml(record.org)}"></div>
+    </div>
+    <div class="row2">
+      <div><label>이메일 (선택 — 첨삭·모의면접 앱과 자동 연동용)</label><input type="email" id="f-email" value="${escapeHtml(record.email || '')}" placeholder="student@example.com"></div>
     </div>
     <div class="row2">
       <div><label>참여 프로그램</label><input type="text" id="f-program" value="${escapeHtml(record.program)}"></div>
@@ -510,7 +625,7 @@ async function renderStudentDetail(id){
     <label>상담 이력</label>
     <div id="consult-log">
       ${(record.consultLog||[]).slice().reverse().map(c => `
-        <div class="consult-item"><div class="c-date">${escapeHtml(c.date)}</div><div>${escapeHtml(c.memo)}</div></div>
+        <div class="consult-item"><div class="c-date">${escapeHtml(c.date)}${c.auto ? ' · <span style="color:var(--teal);font-weight:700">자동기록</span>' : ''}</div><div>${escapeHtml(c.memo)}</div></div>
       `).join('') || '<p class="lead" style="margin:4px 0">아직 상담 기록이 없어요.</p>'}
     </div>
     <textarea id="new-consult" rows="2" placeholder="오늘 상담 내용을 남겨주세요"></textarea>
@@ -537,6 +652,7 @@ async function renderStudentDetail(id){
       id: record.id || genId('stu'),
       name: document.getElementById('f-name').value.trim(),
       contact: document.getElementById('f-contact').value.trim(),
+      email: document.getElementById('f-email').value.trim(),
       org: document.getElementById('f-org').value.trim(),
       program: document.getElementById('f-program').value.trim(),
       startDate: document.getElementById('f-startDate').value,
@@ -577,7 +693,7 @@ async function renderStudentDetail(id){
     // 상담 기록 추가 후 화면만 다시 그림 (서버 저장은 '저장하기' 버튼에서)
     const logEl = document.getElementById('consult-log');
     logEl.innerHTML = (rec.consultLog||[]).slice().reverse().map(c => `
-      <div class="consult-item"><div class="c-date">${escapeHtml(c.date)}</div><div>${escapeHtml(c.memo)}</div></div>
+      <div class="consult-item"><div class="c-date">${escapeHtml(c.date)}${c.auto ? ' · <span style="color:var(--teal);font-weight:700">자동기록</span>' : ''}</div><div>${escapeHtml(c.memo)}</div></div>
     `).join('');
     document.getElementById('new-consult').value = '';
   }
@@ -682,10 +798,12 @@ async function renderProgramDetail(id){
 
     ${id ? `
       <div class="qr-box">
-        <div style="font-weight:600;margin-bottom:10px;">만족도 설문 QR</div>
+        <div style="font-weight:600;margin-bottom:10px;">만족도·소감 설문 QR</div>
         <div id="qr-canvas"></div>
         <div class="qr-url" id="qr-url"></div>
+        <button class="btn btn-outline" id="qr-copy" style="margin-top:8px;padding:7px 12px;font-size:12.5px">설문 주소 복사 (운영보드 연결용)</button>
         <div class="survey-count" id="survey-count">응답 집계 중...</div>
+        <div id="survey-comments"></div>
       </div>
     ` : '<p class="lead">저장한 뒤에 설문 QR코드가 생성돼요.</p>'}
   `;
@@ -693,9 +811,13 @@ async function renderProgramDetail(id){
   if(id){
     const surveyUrl = location.origin + location.pathname + '?survey=1&t=' + encodeURIComponent(TEACHER_ID) + '&p=' + encodeURIComponent(id);
     document.getElementById('qr-url').textContent = surveyUrl;
+    document.getElementById('qr-copy').onclick = async () => {
+      try{ await navigator.clipboard.writeText(surveyUrl); alert('설문 주소를 복사했어요. 운영보드 강의의 "내용·결과" 탭에 붙여넣으세요.'); }
+      catch(e){ prompt('아래 주소를 길게 눌러 복사하세요', surveyUrl); }
+    };
     try{
       new QRCode(document.getElementById('qr-canvas'), {
-        text: surveyUrl, width:160, height:160, colorDark:'#10288C', colorLight:'#FFFFFF'
+        text: surveyUrl, width:160, height:160, colorDark:'#3D4500', colorLight:'#FFFFFF'
       });
     }catch(err){ console.error(err); }
     loadSurveyStats(id);
@@ -746,6 +868,38 @@ async function renderProgramDetail(id){
   }
 }
 
+function renderReviews(items, programId){
+  const box = document.getElementById('survey-comments');
+  if(!box) return;
+  const list = items.filter(i => (i.comment||'').trim());
+  if(!list.length){ box.innerHTML = '<div class="rv-box"><p class="lead" style="margin:0">아직 작성된 소감이 없어요.</p></div>'; return; }
+  let shown = 10;
+  const fmt = (d) => { try{ const x=new Date(d); return (x.getMonth()+1)+'/'+x.getDate()+' '+('0'+x.getHours()).slice(-2)+':'+('0'+x.getMinutes()).slice(-2); }catch(e){ return ''; } };
+  const draw = () => {
+    box.innerHTML = '<div class="rv-box"><div class="rv-head"><b>수강생 소감 ' + list.length + '건</b>' +
+      '<button class="btn btn-outline" id="rv-copy">전체 복사</button><button class="btn btn-outline" id="rv-csv">엑셀(CSV)</button></div>' +
+      list.slice(0, shown).map(i => '<div class="rv-item"><small>' + fmt(i.submittedAt) + ' · 만족도 ' + (i.satisfaction||'-') + '점</small>' + escapeHtml(i.comment.trim()) + '</div>').join('') +
+      (list.length > shown ? '<button class="btn btn-outline" id="rv-more" style="width:100%">더 보기 (' + (list.length - shown) + '건)</button>' : '') +
+      '<p class="lead" style="margin:8px 0 0;font-size:12px">전체 복사한 내용을 운영보드 결과보고서의 "참여자 주요 의견"에 붙여넣으면 한 줄에 하나씩 들어가요.</p></div>';
+    document.getElementById('rv-copy').onclick = async () => {
+      const txt = list.map(i => i.comment.trim().replace(/\s*\n+\s*/g, ' ')).join('\n');
+      try{ await navigator.clipboard.writeText(txt); alert('소감 ' + list.length + '건을 복사했어요.'); }
+      catch(e){ prompt('아래 내용을 길게 눌러 복사하세요', txt); }
+    };
+    document.getElementById('rv-csv').onclick = () => {
+      const q = (x) => '"' + String(x == null ? '' : x).replace(/"/g, '""') + '"';
+      const rows = [['제출시각','만족도','강사태도','도움정도','소감'].map(q).join(',')].concat(
+        items.map(i => [i.submittedAt, i.satisfaction, i.attitude, i.helpfulness, (i.comment||'').trim()].map(q).join(',')));
+      const blob = new Blob(['\uFEFF' + rows.join('\r\n')], { type:'text/csv' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = '수강생소감_' + programId + '.csv'; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    };
+    const more = document.getElementById('rv-more');
+    if(more) more.onclick = () => { shown += 20; draw(); };
+  };
+  draw();
+}
+
 async function loadSurveyStats(programId){
   try{
     const res = await fetch(apiUrl('/api/survey?p=' + encodeURIComponent(programId) + '&list=1'));
@@ -759,6 +913,7 @@ async function loadSurveyStats(programId){
     }
     const avg = (key) => (items.reduce((s,i)=>s+(i[key]||0),0) / items.length).toFixed(1);
     el.innerHTML = `응답 ${items.length}건 · 만족도 평균 ${avg('satisfaction')} / 5.0`;
+    renderReviews(items, programId);
 
     // 프로그램 레코드에 평균 만족도 자동 반영 (진로모아관리 대시보드 집계용)
     try{
