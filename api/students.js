@@ -1,5 +1,8 @@
 // 개인관리(수강생별) 레코드를 저장/조회/삭제하는 함수입니다.
 // 강사별로 데이터가 섞이지 않도록 t(강사 코드)로 키를 구분합니다.
+// 보안 (2026-09-25 긴급 잠금): 강사용 암호(STAFF_PIN 환경변수)가 맞을 때만 동작
+//  - STAFF_PIN이 없으면 무조건 차단
+//  - 같은 기기에서 10번 틀리면 15분 차단
 
 import Redis from 'ioredis';
 
@@ -12,8 +15,33 @@ function safeTeacherId(raw) {
   return String(raw || '').trim().toLowerCase().replace(/[^a-z0-9가-힣_-]/g, '').slice(0, 40);
 }
 
+const STAFF_PIN = process.env.STAFF_PIN || '';
+function ipOf(req) {
+  return String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
+}
+async function checkStaff(client, req) {
+  if (!STAFF_PIN) return false;
+  const key = 'tracker_pinfail:' + ipOf(req);
+  const fails = +(await client.get(key)) || 0;
+  if (fails >= 10) return false;
+  if (req.headers['x-staff-pin'] !== STAFF_PIN) {
+    await client.incr(key);
+    await client.expire(key, 900);
+    return false;
+  }
+  return true;
+}
+
 export default async function handler(req, res) {
   const client = getRedis();
+  res.setHeader('Cache-Control', 'no-store');
+  try {
+    if (!(await checkStaff(client, req))) return res.status(401).json({ error: '강사용 암호가 필요합니다.' });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: '확인 중 오류가 발생했습니다.' });
+  }
+
   const t = safeTeacherId(req.query.t);
   if (!t) return res.status(400).json({ error: 't(강사 코드) 파라미터가 필요합니다.' });
 
