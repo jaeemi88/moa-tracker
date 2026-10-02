@@ -6,7 +6,7 @@
 <title>수강생 사후관리 트래커 — 진로모아커리어센터</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800;900&display=swap">
-<meta name="theme-color" content="#C0D904">
+<meta name="theme-color" content="#FFFFFF">
 <style>
   :root{
     --white:#FFFFFF;
@@ -129,6 +129,30 @@
   .setup-card h3{font-size:16px;margin:0 0 10px;}
   .setup-card p{font-size:13px;color:var(--muted);margin:0 0 14px;}
 </style>
+<link rel="stylesheet" href="/moa-ui.css"><!-- 2026-10-03 MOA 디자인 키트 -->
+<style>
+/* 2026-10-03 트래커 전용 보정 (디자인 키트 위에) */
+body.moa-ui main{max-width:720px !important}
+body.moa-ui .lead{font-size:14px;color:var(--moa-muted)}
+body.moa-ui .back-btn{color:var(--moa-ink);font-weight:700;min-height:40px}
+body.moa-ui .top-card,body.moa-ui .setup-card{border:1px solid var(--moa-line) !important;border-left:1px solid var(--moa-line) !important;border-radius:var(--moa-r-lg) !important;padding:20px !important;min-height:84px;background:#FFFFFF}
+body.moa-ui .top-card:hover{border-color:var(--moa-line-2) !important;background:#FAFBFC}
+body.moa-ui .top-card h2{font-size:17px;font-weight:900;color:var(--moa-ink)}
+body.moa-ui .dash-box{border:0 !important;background:var(--moa-surface) !important;border-radius:var(--moa-r-md) !important;text-align:left !important;padding:16px !important}
+body.moa-ui .dash-box .num{color:var(--moa-ink) !important;font-size:26px !important;font-weight:900 !important;font-variant-numeric:tabular-nums}
+body.moa-ui .list-item{border-color:var(--moa-line) !important;border-radius:var(--moa-r-md) !important;min-height:64px}
+body.moa-ui .list-item:hover{border-color:var(--moa-line-2) !important}
+body.moa-ui .list-item .li-status{color:var(--moa-olive) !important;background:var(--moa-lime-soft) !important;font-weight:700}
+body.moa-ui .add-btn{border:1px dashed var(--moa-line-2) !important;background:#FFFFFF !important;color:var(--moa-ink) !important;border-radius:12px !important;min-height:48px;font-weight:700 !important}
+body.moa-ui .btn{min-height:46px;border-radius:12px !important;font-weight:700 !important}
+body.moa-ui .btn-danger{border-color:#F1B8B3 !important;color:var(--moa-danger) !important}
+body.moa-ui .consult-item,body.moa-ui .rv-item{background:var(--moa-surface) !important;border:0 !important;border-radius:12px !important}
+body.moa-ui .qr-box{border:1px solid var(--moa-line) !important;border-radius:var(--moa-r-lg) !important}
+body.moa-ui .survey-count{color:var(--moa-olive) !important}
+body.moa-ui .survey-wrap h1{font-size:22px !important;font-weight:900;letter-spacing:-0.02em}
+body.moa-ui .stars span.on{color:var(--moa-lime) !important}
+body.moa-ui .survey-wrap .rv-guide{background:var(--moa-lime-soft) !important;color:var(--moa-olive) !important;border-radius:12px !important}
+</style>
 </head>
 <body>
 <style>
@@ -149,7 +173,7 @@
 </header>
 
 <main id="main"></main>
-<script src="/staff-guard.js" data-mode="always" data-color="#3D4500"></script>
+<script src="/staff-guard.js" data-mode="always" data-color="#141A2E"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
 // ── 날짜 표시 통일 (2026-09-28, 면접스킬 전 앱 공통 규칙) ──
@@ -978,5 +1002,6 @@ window.addEventListener('popstate', (e) => {
   else renderHome();
 });
 </script>
+<script src="/moa-ui.js" data-color="#C0D904" data-student="survey" data-strip=".top-card h2"></script><!-- 2026-10-03 흰 상단 바·자물쇠 버튼 -->
 </body>
 </html>
