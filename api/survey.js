@@ -20,6 +20,21 @@ export default async function handler(req, res) {
 
   const indexKey = `tracker_survey_index:${t}:${p}`;
 
+  // 반별 구분 (2026-10-03): 주소의 s(반 id)·sl(반 이름)을 응답에 붙여 저장
+  //  · 운영보드 센터 강의(p=강의 id)는 원장님이 정한 반·담당 강사 목록(moa_assign_case)에서 확인해서 붙임
+  //  · 트래커 프로그램의 반 QR은 주소의 반 이름을 그대로 씀
+  async function slotTag() {
+    const sid = String(req.query.s || '').replace(/[<>]/g, '').trim().slice(0, 40);
+    if (!sid) return {};
+    try {
+      const set = JSON.parse((await client.get('moa_assign_case:' + p)) || '[]');
+      const hit = Array.isArray(set) ? set.find((x) => x.slotId === sid) : null;
+      if (hit) return { slotId: sid, slot: String(hit.slot || '').slice(0, 20), tc: String(hit.t || '').slice(0, 40) };
+    } catch (e) {}
+    const sl = String(req.query.sl || sid).replace(/[<>]/g, '').trim().slice(0, 20);
+    return { slotId: sid, slot: sl };
+  }
+
   if (req.method === 'POST') {
     const { satisfaction, attitude, helpfulness, comment, stage, conf1, conf2 } = req.body || {};
     const star = (v) => { const n = Number(v); return n >= 1 && n <= 5 ? Math.round(n) : 0; };
@@ -27,7 +42,7 @@ export default async function handler(req, res) {
     if (stage === 'pre') {
       if (!star(conf1) || !star(conf2)) return res.status(400).json({ error: '두 문항 모두 별점이 필요합니다.' });
       try {
-        await client.lpush(indexKey, JSON.stringify({ stage: 'pre', conf1: star(conf1), conf2: star(conf2), submittedAt: new Date().toISOString() }));
+        await client.lpush(indexKey, JSON.stringify({ stage: 'pre', conf1: star(conf1), conf2: star(conf2), ...(await slotTag()), submittedAt: new Date().toISOString() }));
         await client.ltrim(indexKey, 0, 999);
         return res.status(200).json({ ok: true });
       } catch (err) {
@@ -46,6 +61,7 @@ export default async function handler(req, res) {
         helpfulness: Number(helpfulness),
         // 소감(수강생 소감문) — 최대 1000자까지 저장
         comment: String(comment || '').slice(0, 1000),
+        ...(await slotTag()),
         submittedAt: new Date().toISOString()
       });
       await client.lpush(indexKey, entry);

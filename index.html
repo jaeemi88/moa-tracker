@@ -269,6 +269,10 @@ function renderSurveyScreen(){
   }
   // 교육 전후 자기평가 (캠프용 · 2026-10-03): se=1이면 자신감 2문항 추가, stage=pre면 첫날 사전 설문(2문항만)
   const SE = params.get('se') === '1', PRE = params.get('stage') === 'pre';
+  // 반별 설문 (2026-10-03): 주소의 반 정보를 응답에 함께 보냄 + 화면 위에 어느 반 설문인지 표시
+  const SLOT_Q = (params.get('s') ? '&s=' + encodeURIComponent(params.get('s')) + '&sl=' + encodeURIComponent(params.get('sl') || '') : '');
+  const slotLab = [params.get('lt'), params.get('sl')].map(x => String(x || '').trim()).filter(Boolean).join(' · ');
+  const slotChip = slotLab ? `<p class="sub" style="margin:-14px 0 22px"><span style="display:inline-block;background:var(--moa-lime-soft,#EEF4C2);color:var(--moa-olive,#3D4500);font-weight:700;border-radius:999px;padding:4px 12px">${escapeHtml(slotLab)}</span></p>` : '';
   const SELFQ = [['conf1','면접 질문에 자신 있게 답할 수 있다'],['conf2','나의 경험으로 자기소개서를 쓸 수 있다']];
   const starRow = (f) => `<div class="stars" data-field="${f}">${[1,2,3,4,5].map(n=>`<span data-v="${n}">★</span>`).join('')}</div>`;
   const selfHtml = SELFQ.map(q => `<label>${q[1]}</label>${starRow(q[0])}`).join('');
@@ -278,6 +282,7 @@ function renderSurveyScreen(){
       <div class="survey-wrap">
         <h1>교육 시작 전, 지금 나는?</h1>
         <p class="sub">30초면 끝나요. 지금 내 모습에 가까운 별점을 골라 주세요. 이름은 받지 않아요.<br>(1점 전혀 아니다 · 5점 매우 그렇다)</p>
+        ${slotChip}
         ${selfHtml}
         <div class="btn-row"><button class="btn btn-primary" id="survey-submit" style="width:100%">제출하기</button></div>
       </div>`;
@@ -286,7 +291,7 @@ function renderSurveyScreen(){
       if(!pr.conf1 || !pr.conf2){ alert('두 문항 모두 별점을 골라 주세요.'); return; }
       const btn = document.getElementById('survey-submit'); btn.disabled = true; btn.textContent = '제출 중...';
       try{
-        const res = await fetch(apiUrl('/api/survey?p=' + encodeURIComponent(PROGRAM_ID)), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ stage:'pre', ...pr }) });
+        const res = await fetch(apiUrl('/api/survey?p=' + encodeURIComponent(PROGRAM_ID) + SLOT_Q), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ stage:'pre', ...pr }) });
         if(!res.ok) throw new Error('submit failed');
         mainEl.innerHTML = `<div class="survey-done"><div class="check">🙌</div><p>고마워요! 마지막 날 한 번 더 물어볼게요.</p></div>`;
       }catch(err){ console.error(err); alert('제출 중 문제가 발생했어요. 다시 시도해 주세요.'); btn.disabled = false; btn.textContent = '제출하기'; }
@@ -298,6 +303,7 @@ function renderSurveyScreen(){
     <div class="survey-wrap">
       <h1>오늘 강의, 어떠셨나요?</h1>
       <p class="sub">1분이면 끝나요. 별점과 짧은 소감을 남겨주세요. 이름은 받지 않아요.</p>
+      ${slotChip}
       <label>전반적인 만족도</label>
       <div class="stars" data-field="satisfaction">${[1,2,3,4,5].map(n=>`<span data-v="${n}">★</span>`).join('')}</div>
       <label>강사의 태도·전달력</label>
@@ -330,7 +336,7 @@ function renderSurveyScreen(){
     const btn = document.getElementById('survey-submit');
     btn.disabled = true; btn.textContent = '제출 중...';
     try{
-      const res = await fetch(apiUrl('/api/survey?p=' + encodeURIComponent(PROGRAM_ID)), {
+      const res = await fetch(apiUrl('/api/survey?p=' + encodeURIComponent(PROGRAM_ID) + SLOT_Q), {
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ ...ratings, comment: document.getElementById('survey-comment').value.trim() })
@@ -856,6 +862,8 @@ async function renderProgramDetail(id){
       <div><label>강의시간(시간)</label><input type="number" id="f-hours" value="${escapeHtml(record.hours)}"></div>
     </div>
     <label>참여 인원수</label><input type="number" id="f-participantCount" value="${escapeHtml(record.participantCount)}">
+    <label>반 나누기 <span style="font-weight:400;color:#6B7280">(여러 반이면 쉼표로 · 예: 1반, 2반, 3반 → 반마다 QR이 따로 생겨요)</span></label>
+    <input type="text" id="f-classes" value="${escapeHtml((record.classes || []).join(', '))}" placeholder="한 반이면 비워 두세요">
     <label>재계약 의향</label>
     <select id="f-renewalIntent">
       ${['있음','미정','없음'].map(s=>`<option ${record.renewalIntent===s?'selected':''}>${s}</option>`).join('')}
@@ -877,6 +885,7 @@ async function renderProgramDetail(id){
         <div style="font-weight:600;margin:16px 0 10px;">② 마지막 날 · 만족도·소감 + 교육 후 자기평가 QR</div>` : '<div style="font-weight:600;margin-bottom:10px;">만족도·소감 설문 QR</div>'}
         <div id="qr-canvas"></div>
         <div class="qr-url" id="qr-url"></div>
+        <div id="qr-classes"></div>
         <button class="btn btn-primary" id="qr-board" style="margin-top:10px;width:100%">운영보드에서 결과보고서 만들기</button>
         <p class="lead" style="margin:6px 0 0;font-size:12px">누르면 운영보드에 이 강의가 연결(없으면 새로 등록)되고, 만족도 점수·소감이 채워진 결과보고서가 바로 열려요.</p>
         <button class="btn btn-outline" id="qr-copy" style="margin-top:8px;padding:7px 12px;font-size:12.5px">설문 주소만 복사</button>
@@ -914,11 +923,29 @@ async function renderProgramDetail(id){
       });
       window.open('https://jinromoa-board.vercel.app/#tracker?' + q.toString(), '_blank');
     };
-    try{
-      new QRCode(document.getElementById('qr-canvas'), {
-        text: surveyUrl, width:160, height:160, colorDark:'#3D4500', colorLight:'#FFFFFF'
+    const classes = (record.classes || []).filter(Boolean);
+    if(classes.length){
+      // 반마다 QR (2026-10-03): 응답에 반 이름이 붙어 반별 만족도·소감으로 모여요
+      document.getElementById('qr-canvas').style.display = 'none';
+      document.getElementById('qr-url').style.display = 'none';
+      const box = document.getElementById('qr-classes');
+      box.innerHTML = '<p class="lead" style="margin:0 0 10px;font-size:12px">반마다 자기 반 QR을 보여 주세요. 응답이 반별로 따로 모여요.</p>' +
+        classes.map((c, i) => `<div style="border:1px solid var(--line,#E6E8EE);border-radius:12px;padding:12px;margin-bottom:10px;text-align:center">
+          <div style="font-weight:700;margin-bottom:8px">${escapeHtml(c)}</div><div id="qr-cls-${i}" style="display:inline-block"></div>
+          <div><button class="btn btn-outline" data-clscopy="${i}" style="margin-top:8px;padding:6px 12px;font-size:12px">이 반 주소 복사</button></div></div>`).join('');
+      const clsUrl = (c) => surveyUrl + '&s=' + encodeURIComponent(c) + '&sl=' + encodeURIComponent(c) + '&lt=' + encodeURIComponent(record.orgName || '');
+      classes.forEach((c, i) => { try{ new QRCode(document.getElementById('qr-cls-' + i), { text: clsUrl(c), width:150, height:150, colorDark:'#3D4500', colorLight:'#FFFFFF' }); }catch(err){ console.error(err); } });
+      box.querySelectorAll('[data-clscopy]').forEach(b => b.onclick = async () => {
+        const u = clsUrl(classes[+b.getAttribute('data-clscopy')]);
+        try{ await navigator.clipboard.writeText(u); alert('이 반 설문 주소를 복사했어요.'); }catch(e){ prompt('아래 주소를 길게 눌러 복사하세요', u); }
       });
-    }catch(err){ console.error(err); }
+    } else {
+      try{
+        new QRCode(document.getElementById('qr-canvas'), {
+          text: surveyUrl, width:160, height:160, colorDark:'#3D4500', colorLight:'#FFFFFF'
+        });
+      }catch(err){ console.error(err); }
+    }
     loadSurveyStats(id);
   }
 
@@ -935,6 +962,7 @@ async function renderProgramDetail(id){
       date: document.getElementById('f-date').value,
       hours: document.getElementById('f-hours').value,
       participantCount: document.getElementById('f-participantCount').value,
+      classes: document.getElementById('f-classes').value.split(/[,，]/).map(x => x.replace(/[<>]/g, '').trim().slice(0, 20)).filter(Boolean).slice(0, 20),
       renewalIntent: document.getElementById('f-renewalIntent').value,
       feedbackNotes: document.getElementById('f-feedbackNotes').value.trim(),
       proposalNotes: document.getElementById('f-proposalNotes').value.trim(),
@@ -978,7 +1006,7 @@ function renderReviews(items, programId){
   const draw = () => {
     box.innerHTML = '<div class="rv-box"><div class="rv-head"><b>수강생 소감 ' + list.length + '건</b>' +
       '<button class="btn btn-outline" id="rv-copy">전체 복사</button><button class="btn btn-outline" id="rv-csv">엑셀(CSV)</button></div>' +
-      list.slice(0, shown).map(i => '<div class="rv-item"><small>' + fmt(i.submittedAt) + ' · 만족도 ' + (i.satisfaction||'-') + '점</small>' + escapeHtml(i.comment.trim()) + '</div>').join('') +
+      list.slice(0, shown).map(i => '<div class="rv-item"><small>' + (i.slot ? escapeHtml(i.slot) + ' · ' : '') + fmt(i.submittedAt) + ' · 만족도 ' + (i.satisfaction||'-') + '점</small>' + escapeHtml(i.comment.trim()) + '</div>').join('') +
       (list.length > shown ? '<button class="btn btn-outline" id="rv-more" style="width:100%">더 보기 (' + (list.length - shown) + '건)</button>' : '') +
       '<p class="lead" style="margin:8px 0 0;font-size:12px">전체 복사한 내용을 운영보드 결과보고서의 "참여자 주요 의견"에 붙여넣으면 한 줄에 하나씩 들어가요.</p></div>';
     document.getElementById('rv-copy').onclick = async () => {
@@ -988,8 +1016,8 @@ function renderReviews(items, programId){
     };
     document.getElementById('rv-csv').onclick = () => {
       const q = (x) => '"' + String(x == null ? '' : x).replace(/"/g, '""') + '"';
-      const rows = [['제출시각','만족도','강사태도','도움정도','소감'].map(q).join(',')].concat(
-        items.map(i => [i.submittedAt, i.satisfaction, i.attitude, i.helpfulness, (i.comment||'').trim()].map(q).join(',')));
+      const rows = [['제출시각','반','만족도','강사태도','도움정도','소감'].map(q).join(',')].concat(
+        items.map(i => [i.submittedAt, i.slot || '', i.satisfaction, i.attitude, i.helpfulness, (i.comment||'').trim()].map(q).join(',')));
       const blob = new Blob(['\uFEFF' + rows.join('\r\n')], { type:'text/csv' });
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = '수강생소감_' + programId + '.csv'; a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 2000);
@@ -1017,6 +1045,16 @@ async function loadSurveyStats(programId){
     const sAvg = (arr, k) => { const v = arr.map(i => +i[k]).filter(n => n > 0); return v.length ? (v.reduce((a,b)=>a+b,0)/v.length).toFixed(1) : '-'; };
     el.innerHTML = `응답 ${items.length}건 · 만족도 평균 ${avg('satisfaction')} / 5.0` +
       ((pre.length || items.some(i => i.conf1)) ? `<br>자기평가 · 면접 자신감 ${sAvg(pre,'conf1')} → ${sAvg(items,'conf1')} · 자소서 자신감 ${sAvg(pre,'conf2')} → ${sAvg(items,'conf2')} (사전 ${pre.length}명)` : '');
+    // 반별 요약 (2026-10-03)
+    const bySlot = {};
+    items.forEach(i => { const k = i.slot || '반 미지정'; (bySlot[k] = bySlot[k] || []).push(i); });
+    const keys = Object.keys(bySlot);
+    if(keys.length > 1 || (keys.length === 1 && keys[0] !== '반 미지정')){
+      el.innerHTML += '<div style="margin-top:8px;font-weight:400">' + keys.map(k => {
+        const a = bySlot[k], m = (a.reduce((s,i)=>s+(i.satisfaction||0),0) / a.length);
+        return '<div>' + escapeHtml(k) + ' · 응답 ' + a.length + '건 · 만족도 <b' + (m < 4 ? ' style="color:#B54708"' : '') + '>' + m.toFixed(1) + '</b></div>';
+      }).join('') + '</div>';
+    }
     renderReviews(items, programId);
 
     // 프로그램 레코드에 평균 만족도 자동 반영 (진로모아관리 대시보드 집계용)
