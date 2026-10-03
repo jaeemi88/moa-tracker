@@ -21,12 +21,26 @@ export default async function handler(req, res) {
   const indexKey = `tracker_survey_index:${t}:${p}`;
 
   if (req.method === 'POST') {
-    const { satisfaction, attitude, helpfulness, comment } = req.body || {};
+    const { satisfaction, attitude, helpfulness, comment, stage, conf1, conf2 } = req.body || {};
+    const star = (v) => { const n = Number(v); return n >= 1 && n <= 5 ? Math.round(n) : 0; };
+    // 교육 전후 자기평가 (캠프용 · 2026-10-03): 첫날 사전 설문은 자신감 2문항만 저장
+    if (stage === 'pre') {
+      if (!star(conf1) || !star(conf2)) return res.status(400).json({ error: '두 문항 모두 별점이 필요합니다.' });
+      try {
+        await client.lpush(indexKey, JSON.stringify({ stage: 'pre', conf1: star(conf1), conf2: star(conf2), submittedAt: new Date().toISOString() }));
+        await client.ltrim(indexKey, 0, 999);
+        return res.status(200).json({ ok: true });
+      } catch (err) {
+        console.error(err);
+        return res.status(500).json({ error: '설문 저장 중 오류가 발생했습니다.' });
+      }
+    }
     if (!satisfaction || !attitude || !helpfulness) {
       return res.status(400).json({ error: '별점 응답이 모두 필요합니다.' });
     }
     try {
       const entry = JSON.stringify({
+        ...(star(conf1) && star(conf2) ? { conf1: star(conf1), conf2: star(conf2) } : {}),
         satisfaction: Number(satisfaction),
         attitude: Number(attitude),
         helpfulness: Number(helpfulness),

@@ -246,6 +246,20 @@ function genId(prefix){ return prefix + '_' + Date.now().toString(36) + '_' + Ma
 /* =========================================================
    공개 설문 화면 (학생 — 로그인 없음)
 ========================================================= */
+function bindStars(target){
+  document.querySelectorAll('.stars').forEach(starsEl => {
+    const field = starsEl.getAttribute('data-field');
+    starsEl.querySelectorAll('span').forEach(s => {
+      s.addEventListener('click', () => {
+        const v = parseInt(s.getAttribute('data-v'), 10);
+        target[field] = v;
+        starsEl.querySelectorAll('span').forEach(s2 => {
+          s2.classList.toggle('on', parseInt(s2.getAttribute('data-v'),10) <= v);
+        });
+      });
+    });
+  });
+}
 function renderSurveyScreen(){
   document.querySelector('header').style.display = 'none';
   var hb=document.querySelector('.moa-hubbar'); if(hb) hb.style.display='none';
@@ -253,7 +267,33 @@ function renderSurveyScreen(){
     mainEl.innerHTML = '<div class="survey-wrap"><p class="sub">설문 링크가 올바르지 않아요. 강사님이 안내한 QR코드로 다시 접속해 주세요.</p></div>';
     return;
   }
-  let ratings = { satisfaction:0, attitude:0, helpfulness:0 };
+  // 교육 전후 자기평가 (캠프용 · 2026-10-03): se=1이면 자신감 2문항 추가, stage=pre면 첫날 사전 설문(2문항만)
+  const SE = params.get('se') === '1', PRE = params.get('stage') === 'pre';
+  const SELFQ = [['conf1','면접 질문에 자신 있게 답할 수 있다'],['conf2','나의 경험으로 자기소개서를 쓸 수 있다']];
+  const starRow = (f) => `<div class="stars" data-field="${f}">${[1,2,3,4,5].map(n=>`<span data-v="${n}">★</span>`).join('')}</div>`;
+  const selfHtml = SELFQ.map(q => `<label>${q[1]}</label>${starRow(q[0])}`).join('');
+  if(PRE){
+    let pr = { conf1:0, conf2:0 };
+    mainEl.innerHTML = `
+      <div class="survey-wrap">
+        <h1>교육 시작 전, 지금 나는?</h1>
+        <p class="sub">30초면 끝나요. 지금 내 모습에 가까운 별점을 골라 주세요. 이름은 받지 않아요.<br>(1점 전혀 아니다 · 5점 매우 그렇다)</p>
+        ${selfHtml}
+        <div class="btn-row"><button class="btn btn-primary" id="survey-submit" style="width:100%">제출하기</button></div>
+      </div>`;
+    bindStars(pr);
+    document.getElementById('survey-submit').addEventListener('click', async () => {
+      if(!pr.conf1 || !pr.conf2){ alert('두 문항 모두 별점을 골라 주세요.'); return; }
+      const btn = document.getElementById('survey-submit'); btn.disabled = true; btn.textContent = '제출 중...';
+      try{
+        const res = await fetch(apiUrl('/api/survey?p=' + encodeURIComponent(PROGRAM_ID)), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ stage:'pre', ...pr }) });
+        if(!res.ok) throw new Error('submit failed');
+        mainEl.innerHTML = `<div class="survey-done"><div class="check">🙌</div><p>고마워요! 마지막 날 한 번 더 물어볼게요.</p></div>`;
+      }catch(err){ console.error(err); alert('제출 중 문제가 발생했어요. 다시 시도해 주세요.'); btn.disabled = false; btn.textContent = '제출하기'; }
+    });
+    return;
+  }
+  let ratings = SE ? { satisfaction:0, attitude:0, helpfulness:0, conf1:0, conf2:0 } : { satisfaction:0, attitude:0, helpfulness:0 };
   mainEl.innerHTML = `
     <div class="survey-wrap">
       <h1>오늘 강의, 어떠셨나요?</h1>
@@ -264,6 +304,7 @@ function renderSurveyScreen(){
       <div class="stars" data-field="attitude">${[1,2,3,4,5].map(n=>`<span data-v="${n}">★</span>`).join('')}</div>
       <label>실제로 도움이 되었나요</label>
       <div class="stars" data-field="helpfulness">${[1,2,3,4,5].map(n=>`<span data-v="${n}">★</span>`).join('')}</div>
+      ${SE ? `<div class="rv-guide" style="margin-top:14px"><b>교육을 마친 지금, 나는?</b> (1점 전혀 아니다 · 5점 매우 그렇다)</div>${selfHtml}` : ''}
       <label>오늘 강의 소감</label>
       <div class="rv-guide">이런 내용을 적어주시면 좋아요<br>· 오늘 새롭게 알게 된 점<br>· 앞으로 해보고 싶은 것<br>· 강사님께 하고 싶은 말</div>
       <textarea id="survey-comment" rows="5" maxlength="1000" placeholder="두세 문장이면 충분해요."></textarea>
@@ -273,23 +314,12 @@ function renderSurveyScreen(){
       </div>
     </div>
   `;
-  document.querySelectorAll('.stars').forEach(starsEl => {
-    const field = starsEl.getAttribute('data-field');
-    starsEl.querySelectorAll('span').forEach(s => {
-      s.addEventListener('click', () => {
-        const v = parseInt(s.getAttribute('data-v'), 10);
-        ratings[field] = v;
-        starsEl.querySelectorAll('span').forEach(s2 => {
-          s2.classList.toggle('on', parseInt(s2.getAttribute('data-v'),10) <= v);
-        });
-      });
-    });
-  });
+  bindStars(ratings);
   const cmt = document.getElementById('survey-comment');
   cmt.addEventListener('input', () => { document.getElementById('rv-count').textContent = cmt.value.length + ' / 1000'; });
   document.getElementById('survey-submit').addEventListener('click', async () => {
-    if(!ratings.satisfaction || !ratings.attitude || !ratings.helpfulness){
-      alert('별점 3가지를 모두 선택해 주세요.');
+    if(!ratings.satisfaction || !ratings.attitude || !ratings.helpfulness || (SE && (!ratings.conf1 || !ratings.conf2))){
+      alert(SE ? '별점 문항을 모두 선택해 주세요.' : '별점 3가지를 모두 선택해 주세요.');
       return;
     }
     if(cmt.value.trim().length < 5){
@@ -830,6 +860,7 @@ async function renderProgramDetail(id){
     <select id="f-renewalIntent">
       ${['있음','미정','없음'].map(s=>`<option ${record.renewalIntent===s?'selected':''}>${s}</option>`).join('')}
     </select>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:14px"><input type="checkbox" id="f-selfEval" style="width:auto" ${record.selfEval?'checked':''}>교육 전후 자기평가 넣기 <span style="font-weight:400;color:#6B7280">(캠프용 · 첫날 QR이 하나 더 생겨요)</span></label>
     <label>담당자 후기 / 특이사항</label><textarea id="f-feedbackNotes" rows="2">${escapeHtml(record.feedbackNotes)}</textarea>
     <label>제안서용 메모</label><textarea id="f-proposalNotes" rows="2">${escapeHtml(record.proposalNotes)}</textarea>
 
@@ -840,7 +871,10 @@ async function renderProgramDetail(id){
 
     ${id ? `
       <div class="qr-box">
-        <div style="font-weight:600;margin-bottom:10px;">만족도·소감 설문 QR</div>
+        ${record.selfEval ? `<div style="font-weight:600;margin-bottom:6px;">① 첫날 · 교육 전 자기평가 QR</div>
+        <p class="lead" style="margin:0 0 8px;font-size:12px">첫 시간 시작할 때 보여 주세요. 2문항, 30초면 끝나요.</p>
+        <div id="qr-pre"></div><div class="qr-url" id="qr-pre-url"></div>
+        <div style="font-weight:600;margin:16px 0 10px;">② 마지막 날 · 만족도·소감 + 교육 후 자기평가 QR</div>` : '<div style="font-weight:600;margin-bottom:10px;">만족도·소감 설문 QR</div>'}
         <div id="qr-canvas"></div>
         <div class="qr-url" id="qr-url"></div>
         <button class="btn btn-primary" id="qr-board" style="margin-top:10px;width:100%">운영보드에서 결과보고서 만들기</button>
@@ -853,7 +887,12 @@ async function renderProgramDetail(id){
   `;
 
   if(id){
-    const surveyUrl = location.origin + location.pathname + '?survey=1&t=' + encodeURIComponent(TEACHER_ID) + '&p=' + encodeURIComponent(id);
+    const surveyUrl = location.origin + location.pathname + '?survey=1&t=' + encodeURIComponent(TEACHER_ID) + '&p=' + encodeURIComponent(id) + (record.selfEval ? '&se=1' : '');
+    if(record.selfEval){
+      const preUrl = surveyUrl + '&stage=pre';
+      document.getElementById('qr-pre-url').textContent = preUrl;
+      try{ new QRCode(document.getElementById('qr-pre'), { text: preUrl, width:160, height:160, colorDark:'#3D4500', colorLight:'#FFFFFF' }); }catch(err){ console.error(err); }
+    }
     document.getElementById('qr-url').textContent = surveyUrl;
     document.getElementById('qr-copy').onclick = async () => {
       try{ await navigator.clipboard.writeText(surveyUrl); alert('설문 주소를 복사했어요. 운영보드 강의의 "내용·결과" 탭에 붙여넣으세요.'); }
@@ -899,6 +938,7 @@ async function renderProgramDetail(id){
       renewalIntent: document.getElementById('f-renewalIntent').value,
       feedbackNotes: document.getElementById('f-feedbackNotes').value.trim(),
       proposalNotes: document.getElementById('f-proposalNotes').value.trim(),
+      selfEval: document.getElementById('f-selfEval').checked,
       avgSatisfaction: record.avgSatisfaction || '',
       createdAt: record.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -964,15 +1004,19 @@ async function loadSurveyStats(programId){
   try{
     const res = await fetch(apiUrl('/api/survey?p=' + encodeURIComponent(programId) + '&list=1'));
     const data = await res.json();
-    const items = data.items || [];
+    const all = data.items || [];
+    const pre = all.filter(i => i.stage === 'pre');
+    const items = all.filter(i => i.stage !== 'pre'); // 첫날 사전 자기평가는 만족도 집계에서 뺌
     const el = document.getElementById('survey-count');
     if(!el) return;
     if(items.length === 0){
-      el.textContent = '아직 응답이 없어요.';
+      el.textContent = pre.length ? '첫날 사전 자기평가 ' + pre.length + '명 응답 · 마지막 날 설문은 아직이에요.' : '아직 응답이 없어요.';
       return;
     }
     const avg = (key) => (items.reduce((s,i)=>s+(i[key]||0),0) / items.length).toFixed(1);
-    el.innerHTML = `응답 ${items.length}건 · 만족도 평균 ${avg('satisfaction')} / 5.0`;
+    const sAvg = (arr, k) => { const v = arr.map(i => +i[k]).filter(n => n > 0); return v.length ? (v.reduce((a,b)=>a+b,0)/v.length).toFixed(1) : '-'; };
+    el.innerHTML = `응답 ${items.length}건 · 만족도 평균 ${avg('satisfaction')} / 5.0` +
+      ((pre.length || items.some(i => i.conf1)) ? `<br>자기평가 · 면접 자신감 ${sAvg(pre,'conf1')} → ${sAvg(items,'conf1')} · 자소서 자신감 ${sAvg(pre,'conf2')} → ${sAvg(items,'conf2')} (사전 ${pre.length}명)` : '');
     renderReviews(items, programId);
 
     // 프로그램 레코드에 평균 만족도 자동 반영 (진로모아관리 대시보드 집계용)
