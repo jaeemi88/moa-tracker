@@ -100,7 +100,9 @@
   .pl-chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 14px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;color:inherit}
   .pl-chip[aria-pressed="true"]{background:#141A2E;color:#fff;border-color:#141A2E}
   .pl-kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
-  .pl-kpi div{background:#F3F4F6;border-radius:14px;padding:14px}.pl-kpi div.hl{background:#F1F6C7}
+  .pl-kpi button{background:#F3F4F6;border:2px solid transparent;border-radius:14px;padding:14px;font-family:inherit;color:inherit;text-align:left;cursor:pointer;position:relative}.pl-kpi button.hl{background:#F1F6C7}
+  .pl-kpi button::after{content:'보기 ›';position:absolute;top:10px;right:12px;font-size:11px;font-weight:700;color:var(--muted)}
+  .pl-kpi button:hover{border-color:#D5D9E0}.pl-kpi button[aria-pressed="true"]{border-color:#141A2E;background:#fff}
   .pl-kpi b{display:block;font-size:26px;font-weight:900;font-variant-numeric:tabular-nums}.pl-kpi span{font-size:12px;color:var(--muted)}
   .pl-kpi small{display:block;font-size:11.5px;color:#3D4500;font-weight:700;margin-top:2px}
   .pl-box{border:1px solid var(--line);border-radius:14px;padding:14px;margin:0 0 14px}
@@ -114,7 +116,17 @@
   .pl-tag{font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;background:#F3F4F6;color:var(--muted);white-space:nowrap}
   .pl-tag.s{background:#F1F6C7;color:#3D4500}.pl-tag.r{background:#E7F6EE;color:#1E7A4C}.pl-tag.d{background:#EEF2FB;color:#11308C}
   .pl-exp{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-  @media (max-width:600px){.pl-kpi{grid-template-columns:repeat(2,1fr)}.pl-exp{grid-template-columns:1fr 1fr}.list-item .pl-tags{justify-content:flex-start}}
+  #pl-view{scroll-margin-top:76px}
+  .pl-desc{font-size:12.5px;color:var(--muted);margin:0 0 10px;line-height:1.6}
+  .pl-note{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#EEF2FB;color:#11308C;border-radius:10px;padding:9px 12px;font-size:13px;font-weight:700;margin:0 0 10px}
+  .pl-note button{margin-left:auto;border:1px solid #11308C;background:#fff;color:#11308C;border-radius:999px;padding:4px 12px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}
+  .pl-sub{margin:-4px 0 10px 14px;border-left:3px solid #C0D904;padding-left:10px}.pl-sub .list-item{margin-bottom:6px}
+  .pl-more{font-size:12px;font-weight:700;color:#3D4500;white-space:nowrap}
+  .pl-bars{display:grid;gap:5px;margin:0 0 12px}.pl-bars div{display:grid;grid-template-columns:34px 1fr 30px;gap:8px;align-items:center;font-size:12px}
+  .pl-bars i{display:block;height:9px;border-radius:9px;background:#F3F4F6;overflow:hidden}.pl-bars i em{display:block;height:100%;background:#C0D904}
+  .pl-voice{display:block}.pl-voice .st{color:#F5A524;font-size:13px;letter-spacing:1px}.pl-voice p{margin:4px 0;font-size:14px;line-height:1.6}
+  .pl-tag.w{background:#FDF3E1;color:#9A5B00}.pl-tag.x{background:#FDECEC;color:#B4232A}
+  @media (max-width:600px){.pl-kpi{grid-template-columns:repeat(2,1fr)}.pl-kpi button{padding:12px}.pl-kpi b{font-size:22px}.pl-exp{grid-template-columns:1fr 1fr}.list-item .pl-tags{justify-content:flex-start}}
   /* 합격 후 체크인 (2026-10-18) */
   .list-item .li-ci{font-size:11px;font-weight:700;color:#3D4500;background:#F1F6C7;padding:2px 8px;border-radius:999px;flex-shrink:0;}
   .ci-box{border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:12px;background:#FBFCF3;}
@@ -879,7 +891,13 @@ async function renderStudentDetail(id){
    진로모아관리 — 실적 보드 (2026-10-18 개선)
    필터(기간·분야·검색) · 실적 숫자 6개 · 다시 연락할 곳 · 프로그램/기관/예정 보기 · 제안서·실적 내보내기
 ========================================================= */
-const PL = { period:'year', field:'', q:'', tab:'prog' };
+const PL = { period:'year', field:'', q:'', tab:'prog', sort:'date', open:'', vmax:30, scroll:false };
+const PL_TABS = [
+  ['prog','프로그램별','강의 한 건씩 보여줘요. 누르면 그 강의 상세(설문·결과보고)가 열려요.'],
+  ['org','기관별','같은 기관 강의를 묶었어요. 기관을 누르면 그 기관 강의가 아래로 펼쳐져요.'],
+  ['soon','예정된 강의','앞으로 잡힌 강의예요. 설문 QR·준비물 챙길 때 보세요.'],
+  ['voice','만족도·소감','수강생 설문 별점과 소감이에요. 누르면 그 강의로 가요. 좋은 소감은 아래 \'베스트 소감 복사\'로 제안서에 넣으세요.'],
+  ['call','재계약·연락','기관마다 재계약 의향과 다음 연락 시기예요. 재계약 의향은 프로그램 상세에서 \'있음/미정/없음\'으로 바꿔요. (기간 필터와 상관없이 전체 기록으로 계산)']];
 let PL_DATA = { items:[], survey:{} };
 const RECONTACT_DAYS = 150;   // 마지막 강의 후 이만큼 지나면 다시 연락 후보
 const CONTACT_COOLDOWN = 60;  // '연락함' 누른 뒤 이 기간 동안은 목록에서 숨김
@@ -928,6 +946,23 @@ function plRecontact(){
     if(g.contactedAt && plDaysSince(g.contactedAt.slice(0,10)) < CONTACT_COOLDOWN) return false;
     return g.renew || plDaysSince(g.last.date) >= RECONTACT_DAYS;
   });
+}
+// 재계약·연락 탭: 기관마다 지금 상태와 다음 연락 시기
+function plCallInfo(g, rcSet){
+  const t = todayIso(), next = g.items.filter(r => (r.date || '') > t).map(r => r.date).sort()[0];
+  const intent = g.renew ? '있음' : (g.items.some(r => r.renewalIntent === '없음') && !g.items.some(r => r.renewalIntent === '미정') ? '없음' : '미정');
+  let state, cls = '';
+  if(rcSet.has(g.org)){ state = '지금 연락할 때예요'; cls = 'r'; }
+  else if(next){ state = moaDate(next) + ' 강의 예정 · 끝난 뒤 다시 계산'; cls = 'd'; }
+  else if(!g.last){ state = '끝난 강의가 아직 없어요'; }
+  else if(g.contactedAt && plDaysSince(g.contactedAt.slice(0,10)) < CONTACT_COOLDOWN){
+    const back = isoOf(new Date(new Date(g.contactedAt.slice(0,10) + 'T00:00:00').getTime() + CONTACT_COOLDOWN * 86400000));
+    state = plDaysSince(g.contactedAt.slice(0,10)) + '일 전 연락함 · ' + moaDate(back) + '부터 다시 보여요';
+  } else {
+    const when = isoOf(new Date(new Date(g.last.date + 'T00:00:00').getTime() + RECONTACT_DAYS * 86400000));
+    state = moaDate(when) + '부터 연락 대상 (D-' + Math.max(0, daysUntil(when)) + ')'; cls = 'w';
+  }
+  return { intent, state, cls };
 }
 function plSeason(){ const m = new Date().getMonth() + 1; return (m >= 11 || m <= 2) ? '내년 예산 짜는 11~2월' : '다음 학기 계획 전에'; }
 function plMsg(g){
@@ -978,24 +1013,45 @@ function drawProgramBoard(){
   const list = plFiltered(), st = plStats(list), rc = plRecontact(), t = todayIso();
   const fields = Array.from(new Set(PL_DATA.items.map(r => r.field).filter(Boolean))).sort();
   const chip = (on, attr, label) => `<button type="button" class="pl-chip" ${attr} aria-pressed="${on}">${label}</button>`;
+  const kpi = (k, on, cls, val, label, sub) => `<button type="button" class="${cls}" data-kpi="${k}" aria-pressed="${on}"><b>${val}</b><span>${label}</span><small>${escapeHtml(String(sub))}</small></button>`;
+  const progRow = (r) => {
+    const sv = (PL_DATA.survey[r.id] || []).map(i => +i.satisfaction).filter(n => n > 0);
+    const avg = sv.length ? (sv.reduce((a,b)=>a+b,0)/sv.length).toFixed(1) : '';
+    const soon = (r.date || '') > t;
+    return `<div class="list-item" data-pid="${escapeHtml(r.id)}"><div><div class="li-name">${escapeHtml(r.orgName)} · ${escapeHtml(r.programName)}</div>
+      <div class="li-sub">${escapeHtml(moaDate(r.date, 'week') || '일자 미정')} · 참여 ${escapeHtml(r.participantCount || '-')}명${r.hours ? ' · ' + escapeHtml(r.hours) + '시간' : ''}</div></div>
+      <div class="pl-tags">${avg ? `<span class="pl-tag s">★ ${avg} · 응답 ${sv.length}</span>` : ''}${r.renewalIntent === '있음' ? '<span class="pl-tag r">재계약 있음</span>' : ''}<span class="pl-tag ${soon ? 'd' : ''}">${soon ? '예정' : r.date ? '완료' : '일자 미정'}</span></div></div>`;
+  };
   let main = '';
   if(PL.tab === 'org'){
     const gs = plByOrg(list);
-    main = gs.length ? gs.map(g => `<div class="list-item" data-org="${escapeHtml(g.org)}"><div><div class="li-name">${escapeHtml(g.org)}</div>
+    main = gs.length ? gs.map(g => { const open = PL.open === g.org; return `<div class="list-item" data-org="${escapeHtml(g.org)}" aria-expanded="${open}"><div><div class="li-name">${escapeHtml(g.org)}</div>
       <div class="li-sub">강의 ${g.items.length}회 · 참여 ${g.people}명${g.last ? ' · 마지막 ' + escapeHtml(moaDate(g.last.date)) : ''}</div></div>
-      <div class="pl-tags">${g.avg !== '-' ? `<span class="pl-tag s">★ ${g.avg}</span>` : ''}${g.renew ? '<span class="pl-tag r">재계약 있음</span>' : ''}</div></div>`).join('')
+      <div class="pl-tags">${g.avg !== '-' ? `<span class="pl-tag s">★ ${g.avg}</span>` : ''}${g.renew ? '<span class="pl-tag r">재계약 있음</span>' : ''}<span class="pl-more">${open ? '접기 ▴' : '강의 보기 ▾'}</span></div></div>
+      ${open ? `<div class="pl-sub">${g.items.map(progRow).join('')}</div>` : ''}`; }).join('')
       : '<p class="lead">조건에 맞는 기관이 없어요.</p>';
+  } else if(PL.tab === 'voice'){
+    const all = [].concat(...list.map(r => (PL_DATA.survey[r.id] || []).map(i => Object.assign({ r }, i)))).filter(i => +i.satisfaction > 0);
+    const cnt = [5,4,3,2,1].map(n => all.filter(i => Math.round(+i.satisfaction) === n).length);
+    const said = all.filter(i => String(i.comment || '').trim()).sort((a,b) => (b.submittedAt || b.r.date || '').localeCompare(a.submittedAt || a.r.date || ''));
+    main = all.length ? `<div class="pl-bars">${cnt.map((c,i) => `<div><span>${5-i}점</span><i><em style="width:${all.length ? Math.round(c / all.length * 100) : 0}%"></em></i><span>${c}명</span></div>`).join('')}</div>
+      ${said.length ? said.slice(0, PL.vmax).map(i => `<div class="list-item pl-voice" data-pid="${escapeHtml(i.r.id)}"><span class="st">${'★'.repeat(Math.round(+i.satisfaction))}${'☆'.repeat(5 - Math.round(+i.satisfaction))}</span>
+        <p>${escapeHtml(String(i.comment).trim())}</p><div class="li-sub">${escapeHtml(plIsPersonal(i.r) ? '개인 수강생' : i.r.orgName)} · ${escapeHtml((i.r.programName || '').replace(/\s*\(자동집계\)/, ''))} · ${escapeHtml(moaDate((i.submittedAt || '').slice(0,10) || i.r.date) || '')}</div></div>`).join('')
+        + (said.length > PL.vmax ? `<button type="button" class="btn btn-outline" id="pl-vmore" style="width:100%">소감 더 보기 (${said.length - PL.vmax}개 남음)</button>` : '')
+        : '<p class="lead">별점만 남기고 소감은 아직 없어요.</p>'}`
+      : '<p class="lead">아직 설문 응답이 없어요. 강의 끝날 때 프로그램 상세의 설문 QR을 띄워 주세요.</p>';
+  } else if(PL.tab === 'call'){
+    const rcSet = new Set(rc.map(g => g.org)), q = PL.q.trim().toLowerCase();
+    const gs = plByOrg(PL_DATA.items).filter(g => !plIsPersonal(g.items[0]) && (!q || g.org.toLowerCase().includes(q)));
+    main = gs.length ? gs.map(g => { const c = plCallInfo(g, rcSet); return `<div class="list-item" data-pid="${escapeHtml((g.last || g.items[0]).id)}"><div><div class="li-name">${escapeHtml(g.org)}</div>
+      <div class="li-sub">${escapeHtml(c.state)}</div></div>
+      <div class="pl-tags"><span class="pl-tag ${c.intent === '있음' ? 'r' : c.intent === '없음' ? 'x' : ''}">재계약 ${c.intent}</span>${c.cls ? `<span class="pl-tag ${c.cls}">${c.cls === 'r' ? '지금 연락' : c.cls === 'd' ? '예정 있음' : '기다리는 중'}</span>` : ''}</div></div>`; }).join('')
+      + `<p class="pl-desc" style="margin-top:10px">💡 '지금 다시 연락할 곳'은 ① 재계약 의향이 '있음'이거나 ② 마지막 강의 뒤 ${RECONTACT_DAYS}일이 지난 기관이 올라와요. 예정 강의가 있거나 '연락함'을 누른 지 ${CONTACT_COOLDOWN}일이 안 됐으면 빠져요. 강의 끝나고 담당자 반응이 좋았다면 프로그램 상세에서 재계약 의향을 '있음'으로 바꿔 두세요. 바로 위 목록에 올라와요.</p>`
+      : '<p class="lead">기관 기록이 없어요. (개인 고객은 빠져요)</p>';
   } else {
     const rows = (PL.tab === 'soon' ? list.filter(r => (r.date || '') > t).sort((a,b) => (a.date || '').localeCompare(b.date || ''))
-      : list.slice().sort((a,b) => (b.date || '').localeCompare(a.date || '')));
-    main = rows.length ? rows.map(r => {
-      const sv = (PL_DATA.survey[r.id] || []).map(i => +i.satisfaction).filter(n => n > 0);
-      const avg = sv.length ? (sv.reduce((a,b)=>a+b,0)/sv.length).toFixed(1) : '';
-      const soon = (r.date || '') > t;
-      return `<div class="list-item" data-pid="${escapeHtml(r.id)}"><div><div class="li-name">${escapeHtml(r.orgName)} · ${escapeHtml(r.programName)}</div>
-        <div class="li-sub">${escapeHtml(moaDate(r.date, 'week') || '일자 미정')} · 참여 ${escapeHtml(r.participantCount || '-')}명${r.hours ? ' · ' + escapeHtml(r.hours) + '시간' : ''}</div></div>
-        <div class="pl-tags">${avg ? `<span class="pl-tag s">★ ${avg} · 응답 ${sv.length}</span>` : ''}${r.renewalIntent === '있음' ? '<span class="pl-tag r">재계약 있음</span>' : ''}<span class="pl-tag ${soon ? 'd' : ''}">${soon ? '예정' : r.date ? '완료' : '일자 미정'}</span></div></div>`;
-    }).join('') : `<p class="lead">${PL.tab === 'soon' ? '예정된 강의가 없어요.' : '조건에 맞는 프로그램이 없어요.'}</p>`;
+      : list.slice().sort((a,b) => PL.sort === 'people' ? ((parseInt(b.participantCount,10) || 0) - (parseInt(a.participantCount,10) || 0)) : (b.date || '').localeCompare(a.date || '')));
+    main = rows.length ? rows.map(progRow).join('') : `<p class="lead">${PL.tab === 'soon' ? '예정된 강의가 없어요.' : '조건에 맞는 프로그램이 없어요.'}</p>`;
   }
   body.innerHTML = `
     <p class="lead" style="margin-top:0">기관·강의 실적을 모아 제안서와 재계약 영업에 씁니다.</p>
@@ -1005,18 +1061,20 @@ function drawProgramBoard(){
       <input type="text" id="pl-q" placeholder="기관·프로그램 검색" value="${escapeHtml(PL.q)}">
     </div>
     <div class="pl-kpi">
-      <div><b>${st.orgs}</b><span>협업 기관</span><small>개인 고객 제외</small></div>
-      <div><b>${st.total}</b><span>프로그램</span><small>예정 ${st.upcoming} · 완료 ${st.done}</small></div>
-      <div><b>${st.people}</b><span>누적 참여 인원</span><small>설문 응답 ${st.resp}명${st.people ? ' (' + Math.min(100, Math.round(st.resp / st.people * 100)) + '%)' : ''}</small></div>
-      <div class="hl"><b>${st.avg}</b><span>평균 만족도</span><small>5점 만점 · 응답 ${st.resp}건</small></div>
-      <div><b>${st.renew}</b><span>재계약 의향 '있음'</span><small>기관 ${st.orgs}곳 중</small></div>
-      <div class="hl"><b>${rc.length}</b><span>지금 다시 연락할 곳</span><small>${rc.length ? '아래에서 바로 연락' : '지금은 없어요'}</small></div>
+      ${kpi('org', PL.tab === 'org', '', st.orgs, '협업 기관', '개인 고객 제외')}
+      ${kpi('prog', PL.tab === 'prog' && PL.sort === 'date', '', st.total, '프로그램', '예정 ' + st.upcoming + ' · 완료 ' + st.done)}
+      ${kpi('people', PL.tab === 'prog' && PL.sort === 'people', '', st.people, '누적 참여 인원', '설문 응답 ' + st.resp + '명' + (st.people ? ' (' + Math.min(100, Math.round(st.resp / st.people * 100)) + '%)' : ''))}
+      ${kpi('voice', PL.tab === 'voice', 'hl', st.avg, '평균 만족도', '5점 만점 · 응답 ' + st.resp + '건')}
+      ${kpi('renew', PL.tab === 'call', '', st.renew, "재계약 의향 '있음'", '기관 ' + st.orgs + '곳 중')}
+      ${kpi('call', PL.tab === 'call', 'hl', rc.length, '지금 다시 연락할 곳', rc.length ? '아래에서 바로 연락' : '다음 연락 시기 보기')}
     </div>
     ${rc.length ? `<div class="pl-box"><h3>📞 다시 연락할 때가 된 곳 <em>${plSeason()}</em></h3>${rc.map((g,i) => `
       <div class="pl-row"><div class="t"><b>${escapeHtml(g.org)}</b><span>마지막 강의 ${escapeHtml(moaDate(g.last.date))}${g.avg !== '-' ? ' · 만족도 ' + g.avg : ''}${g.renew ? ' · 재계약 의향 있음' : ''}</span></div>
       <button type="button" class="btn btn-outline" data-rcmsg="${i}">연락 문안 복사</button><button type="button" class="btn btn-primary" data-rcdone="${i}">연락함</button></div>`).join('')}
       <p class="lead" style="margin:8px 0 0;font-size:12px">연락하신 뒤 '연락함'을 누르면 ${CONTACT_COOLDOWN}일 동안 목록에서 빠져요. 영업 리스트에도 함께 남기면 영업·제안부가 이어서 챙겨요.</p></div>` : ''}
-    <div class="pl-tabs">${chip(PL.tab === 'prog', 'data-tab="prog"', '프로그램별')}${chip(PL.tab === 'org', 'data-tab="org"', '기관별')}${chip(PL.tab === 'soon', 'data-tab="soon"', '예정된 강의')}</div>
+    <div class="pl-tabs" id="pl-view">${PL_TABS.map(x => chip(PL.tab === x[0], 'data-tab="' + x[0] + '"', x[1])).join('')}</div>
+    <p class="pl-desc">${PL_TABS.find(x => x[0] === PL.tab)[2]}${PL.tab === 'prog' ? ` &nbsp;<button type="button" class="pl-chip" data-sort="${PL.sort === 'people' ? 'date' : 'people'}" style="padding:3px 10px;font-size:12px">${PL.sort === 'people' ? '참여 인원 많은 순 → 최신순으로' : '최신순 → 참여 인원 많은 순으로'}</button>` : ''}</p>
+    ${PL.q.trim() ? `<div class="pl-note">🔎 '${escapeHtml(PL.q.trim())}' 검색 결과만 보는 중<button type="button" id="pl-clear">전체 보기</button></div>` : ''}
     <button class="add-btn" id="add-program">+ 프로그램(강의) 추가</button>
     <div id="program-items">${main}</div>
     <div class="pl-box"><h3>📄 제안서·사업실적에 바로 쓰기</h3>
@@ -1025,13 +1083,22 @@ function drawProgramBoard(){
       <p class="lead" style="margin:8px 0 0;font-size:12px">위에서 고른 기간·분야·검색으로 걸러진 목록이 그대로 나가요. 제안서 생성기나 운영보드 제안서에 붙여 넣으면 돼요.</p></div>`;
 
   body.querySelectorAll('[data-period]').forEach(b => b.onclick = () => { PL.period = b.dataset.period; drawProgramBoard(); });
-  body.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { PL.tab = b.dataset.tab; drawProgramBoard(); });
+  body.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { PL.tab = b.dataset.tab; PL.sort = 'date'; drawProgramBoard(); });
+  body.querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { PL.sort = b.dataset.sort; drawProgramBoard(); });
+  body.querySelectorAll('[data-kpi]').forEach(b => b.onclick = () => {
+    const k = b.dataset.kpi;
+    PL.tab = { org:'org', prog:'prog', people:'prog', voice:'voice', renew:'call', call:'call' }[k]; PL.sort = k === 'people' ? 'people' : 'date';
+    PL.scroll = true; drawProgramBoard();
+  });
+  const clr = document.getElementById('pl-clear'); if(clr) clr.onclick = () => { PL.q = ''; drawProgramBoard(); };
+  const vm = document.getElementById('pl-vmore'); if(vm) vm.onclick = () => { PL.vmax += 30; drawProgramBoard(); };
+  if(PL.scroll){ PL.scroll = false; const v = document.getElementById('pl-view'); if(v) v.scrollIntoView({ behavior:'smooth', block:'start' }); }
   document.getElementById('pl-field').onchange = (e) => { PL.field = e.target.value; drawProgramBoard(); };
   const qi = document.getElementById('pl-q');
   qi.oninput = () => { PL.q = qi.value; clearTimeout(qi._t); qi._t = setTimeout(() => { const pos = qi.selectionStart; drawProgramBoard(); const n = document.getElementById('pl-q'); n.focus(); try{ n.setSelectionRange(pos, pos); }catch(e){} }, 300); };
   document.getElementById('add-program').onclick = () => renderProgramDetail(null);
   body.querySelectorAll('[data-pid]').forEach(d => d.onclick = () => renderProgramDetail(d.dataset.pid));
-  body.querySelectorAll('[data-org]').forEach(d => d.onclick = () => { PL.tab = 'prog'; PL.q = d.dataset.org; drawProgramBoard(); });
+  body.querySelectorAll('[data-org]').forEach(d => d.onclick = () => { PL.open = PL.open === d.dataset.org ? '' : d.dataset.org; drawProgramBoard(); });
   body.querySelectorAll('[data-rcmsg]').forEach(b => b.onclick = () => plCopy(plMsg(rc[+b.dataset.rcmsg]), '연락 문안을 복사했어요. 카톡·문자·메일에 붙여 넣으세요.'));
   body.querySelectorAll('[data-rcdone]').forEach(b => b.onclick = async () => {
     const g = rc[+b.dataset.rcdone], rec = Object.assign({}, g.last, { contactedAt: new Date().toISOString() });
