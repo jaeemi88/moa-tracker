@@ -94,6 +94,16 @@
   .btn-danger{background:#fff;border:1px solid #E5A0A0;color:#B91C1C;}
   .btn-row{display:flex;gap:8px;margin-top:18px;}
   .care-toggle{display:flex;align-items:center;gap:8px;margin:14px 0 4px;}
+  /* 합격 후 체크인 (2026-10-18) */
+  .list-item .li-ci{font-size:11px;font-weight:700;color:#3D4500;background:#F1F6C7;padding:2px 8px;border-radius:999px;flex-shrink:0;}
+  .ci-box{border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:12px;background:#FBFCF3;}
+  .ci-box h4{margin:0 0 6px;font-size:14px;}
+  .ci-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 0;border-top:1px dashed var(--line);}
+  .ci-row:first-of-type{border-top:0;}
+  .ci-row .ci-l{flex:1;min-width:150px;font-size:13px;}
+  .ci-row .ci-l b{display:block;font-size:13.5px;}
+  .ci-row .ci-s{font-size:12px;color:var(--muted);}
+  .ci-row .btn{padding:7px 11px;font-size:12.5px;min-height:0;}
   .care-toggle input{width:auto;}
 
   .consult-item{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:8px;}
@@ -242,6 +252,25 @@ function escapeHtml(s){
   return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 function genId(prefix){ return prefix + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8); }
+
+/* 합격 후 체크인: 입사일 기준 6개월·1년 (2026-10-18) */
+const CHECKINS = [{k:'m6', label:'입사 6개월', months:6}, {k:'y1', label:'입사 1년', months:12}];
+function isoOf(d){ return d.getFullYear() + '-' + ('0'+(d.getMonth()+1)).slice(-2) + '-' + ('0'+d.getDate()).slice(-2); }
+function todayIso(){ return isoOf(new Date()); }
+function addMonths(iso, n){ const p = iso.split('-'); return isoOf(new Date(+p[0], +p[1]-1+n, +p[2])); }
+function daysUntil(iso){ const p = iso.split('-'), t = new Date(); return Math.round((new Date(+p[0], +p[1]-1, +p[2]) - new Date(t.getFullYear(), t.getMonth(), t.getDate())) / 86400000); }
+function checkinList(rec){
+  if(!rec || !/^\d{4}-\d{2}-\d{2}$/.test(rec.joinDate || '')) return [];
+  const done = rec.checkins || {};
+  return CHECKINS.map(c => { const date = addMonths(rec.joinDate, c.months); return Object.assign({}, c, {date, days: daysUntil(date), done: done[c.k] || ''}); });
+}
+// 7일 안에 다가왔거나 지난, 아직 안 한 체크인 (없으면 null)
+function checkinDue(rec){ return checkinList(rec).find(c => !c.done && c.days <= 7) || null; }
+function checkinMsg(name, c){
+  const n = name ? name + '님' : '';
+  if(c.k === 'm6') return n + ', 입사 6개월 축하드려요. 진로모아커리어센터입니다.\n반년을 버틴 것 자체가 실력이에요. 회사생활은 어떤가요?\n연봉이나 직무, 이직 고민이 생기면 언제든 편하게 연락 주세요.';
+  return n + ', 입사 1년 축하드려요. 진로모아커리어센터입니다.\n1년 동안 정말 수고 많으셨어요. 첫 출근 날이 기억나시나요?\n후배들에게 해 주고 싶은 한마디가 있다면 들려주세요. 커리어 고민도 언제든 연락 주세요.';
+}
 
 /* =========================================================
    공개 설문 화면 (학생 — 로그인 없음)
@@ -607,6 +636,12 @@ function renderHome(){
     </div>
   `;
   document.getElementById('go-students').onclick = () => { history.pushState({screen:'students'},''); renderStudentList(); };
+  // 합격 후 체크인이 다가온 수강생 수 (2026-10-18)
+  fetch(apiUrl('/api/students?list=1')).then(r => r.json()).then(d => {
+    const n = (d.items || []).filter(checkinDue).length;
+    const card = document.getElementById('go-students');
+    if(n && card) card.insertAdjacentHTML('beforeend', '<p style="margin-top:6px;font-weight:700;color:#3D4500">🎉 합격 후 체크인할 수강생 ' + n + '명</p>');
+  }).catch(() => {});
   document.getElementById('go-programs').onclick = () => { history.pushState({screen:'programs'},''); renderProgramList(); };
 }
 
@@ -628,7 +663,7 @@ async function renderStudentList(){
     if(items.length === 0){
       list.innerHTML = '<p class="lead">아직 등록된 수강생이 없어요.</p>';
     }
-    items.sort((a,b)=> (a.nextCheckDate||'9999').localeCompare(b.nextCheckDate||'9999'));
+    items.sort((a,b)=> (checkinDue(b)?1:0) - (checkinDue(a)?1:0) || (a.nextCheckDate||'9999').localeCompare(b.nextCheckDate||'9999'));
     items.forEach(item => {
       const overdue = item.nextCheckDate && item.nextCheckDate < new Date().toISOString().slice(0,10);
       const div = document.createElement('div');
@@ -638,7 +673,7 @@ async function renderStudentList(){
           <div class="li-name">${escapeHtml(item.name)} ${item.careFlag ? '⭐' : ''}</div>
           <div class="li-sub">${escapeHtml(item.org||'')} · ${escapeHtml(item.program||'')}${item.nextCheckDate ? ' · 다음확인 ' + moaDate(item.nextCheckDate, 'week') : ''}</div>
         </div>
-        ${overdue ? '<span class="li-flag">확인 필요</span>' : `<span class="li-status">${escapeHtml(item.status||'관리중')}</span>`}
+        ${checkinDue(item) ? `<span class="li-ci">🎉 ${checkinDue(item).label}</span>` : overdue ? '<span class="li-flag">확인 필요</span>' : `<span class="li-status">${escapeHtml(item.status||'관리중')}</span>`}
       `;
       div.onclick = () => renderStudentDetail(item.id);
       list.appendChild(div);
@@ -699,6 +734,11 @@ async function renderStudentDetail(id){
       <div><label>취업 상태(선택)</label><input type="text" id="f-employmentStatus" placeholder="예: 재직중/구직중" value="${escapeHtml(record.employmentStatus)}"></div>
     </div>
     <label>합격기업/직무(선택)</label><input type="text" id="f-company" value="${escapeHtml(record.company)}">
+    <div class="row2">
+      <div><label>입사일 (선택 · 합격 후 첫 출근)</label><input type="date" id="f-joinDate" value="${escapeHtml(record.joinDate || '')}"></div>
+      <div></div>
+    </div>
+    <div id="checkin-box"></div>
 
     <label>상담 이력</label>
     <div id="consult-log">
@@ -723,6 +763,38 @@ async function renderStudentDetail(id){
     renderStudentDetailWithRecord(record, id);
   };
 
+  // 합격 후 체크인 카드 (입사일을 넣으면 6개월·1년 날짜가 자동으로 잡힘)
+  function drawCheckins(){
+    const box = document.getElementById('checkin-box'); if(!box) return;
+    const list = checkinList({joinDate: document.getElementById('f-joinDate').value, checkins: record.checkins});
+    if(!list.length){ box.innerHTML = '<p class="lead" style="margin:6px 0 0;font-size:12.5px">입사일을 넣으면 입사 6개월·1년 축하 체크인 날짜가 자동으로 잡혀요.</p>'; return; }
+    box.innerHTML = '<div class="ci-box"><h4>🎉 합격 후 체크인</h4>' + list.map(c => {
+      const st = c.done ? '완료 ' + moaDate(c.done) : c.days > 0 ? 'D-' + c.days : c.days === 0 ? '오늘' : (-c.days) + '일 지남';
+      return '<div class="ci-row"><div class="ci-l"><b>' + c.label + ' · ' + moaDate(c.date, 'week') + '</b><span class="ci-s">' + st + '</span></div>' +
+        '<button type="button" class="btn btn-outline" data-cimsg="' + c.k + '">축하 메시지 복사</button>' +
+        (c.done ? '' : '<button type="button" class="btn btn-primary" data-cidone="' + c.k + '">체크인 완료</button>') + '</div>';
+    }).join('') + '<p class="lead" style="margin:8px 0 0;font-size:12px">메시지를 복사해 카톡·문자로 보내고, 완료를 누른 뒤 저장해 주세요.</p></div>';
+  }
+  drawCheckins();
+  document.getElementById('f-joinDate').addEventListener('change', drawCheckins);
+  document.getElementById('checkin-box').addEventListener('click', async (e) => {
+    const m = e.target.closest('[data-cimsg]'), d = e.target.closest('[data-cidone]');
+    if(m){
+      const c = CHECKINS.find(x => x.k === m.dataset.cimsg);
+      const text = checkinMsg(document.getElementById('f-name').value.trim(), c);
+      try{ await navigator.clipboard.writeText(text); m.textContent = '복사됨'; setTimeout(() => { m.textContent = '축하 메시지 복사'; }, 1500); }
+      catch(err){ prompt('아래 메시지를 길게 눌러 복사하세요', text); }
+    }
+    if(d){
+      const c = CHECKINS.find(x => x.k === d.dataset.cidone);
+      record.checkins = Object.assign({}, record.checkins, {[c.k]: todayIso()});
+      record.consultLog = record.consultLog || [];
+      record.consultLog.push({ date: todayIso(), memo: c.label + ' 체크인 완료 (축하 메시지 전달)', auto: true });
+      renderStudentDetailWithRecord(record, id);
+      drawCheckins();
+    }
+  });
+
   document.getElementById('save-student').onclick = async () => {
     const btn = document.getElementById('save-student');
     btn.disabled = true; btn.textContent = '저장 중...';
@@ -740,6 +812,8 @@ async function renderStudentDetail(id){
       satisfaction: document.getElementById('f-satisfaction').value,
       employmentStatus: document.getElementById('f-employmentStatus').value.trim(),
       company: document.getElementById('f-company').value.trim(),
+      joinDate: document.getElementById('f-joinDate').value,
+      checkins: record.checkins || {},
       consultLog: record.consultLog || [],
       createdAt: record.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString()
