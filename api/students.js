@@ -82,7 +82,8 @@ export default async function handler(req, res) {
       const summary = JSON.stringify({
         id: record.id, name: record.name, org: record.org, program: record.program,
         status: record.status, nextCheckDate: record.nextCheckDate, careFlag: record.careFlag,
-        email: record.email || ''
+        email: record.email || '',
+        joinDate: record.joinDate || '', checkins: record.checkins || {}
       });
       await client.hset(indexKey, record.id, summary);
       return res.status(200).json({ ok: true, id: record.id });
