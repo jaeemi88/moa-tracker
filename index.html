@@ -219,6 +219,8 @@ body.moa-ui .survey-wrap .rv-guide{background:var(--moa-lime-soft) !important;co
 <script src="/staff-guard.js" data-mode="always" data-color="#141A2E"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script>
+// 쓰임새 기록 (2026-10-24 · 2단계 정리): 화면이 열린 횟수만 운영보드로 보냄 (이름·기기 정보는 보내지 않음)
+function moaUse(s){try{var k=String(s),t=Date.now(),m=window.__moaUse||(window.__moaUse={});if(m[k]&&t-m[k]<600000)return;m[k]=t;var u='https://jinromoa-board.vercel.app/api/usage',b=JSON.stringify({a:'tr',s:k});if(navigator.sendBeacon)navigator.sendBeacon(u,b);else fetch(u,{method:'POST',body:b,keepalive:true,mode:'no-cors'})}catch(e){}}
 // ── 날짜 표시 통일 (2026-09-28, 면접스킬 전 앱 공통 규칙) ──
 // 기본(기록) 2026.10.26 · week(일정) 2026.10.26(월) · short 10.26(월) · time 2026.10.26 14:00 · stime 10.26(월) 14:00 · ym 2000.03 · formal 2026년 9월 27일
 function moaDate(v, kind){
@@ -329,6 +331,7 @@ function renderSurveyScreen(){
     mainEl.innerHTML = '<div class="survey-wrap"><p class="sub">설문 링크가 올바르지 않아요. 강사님이 안내한 QR코드로 다시 접속해 주세요.</p></div>';
     return;
   }
+  moaUse('survey');
   // 교육 전후 자기평가 (캠프용 · 2026-10-03): se=1이면 자신감 2문항 추가, stage=pre면 첫날 사전 설문(2문항만)
   const SE = params.get('se') === '1', PRE = params.get('stage') === 'pre';
   // 반별 설문 (2026-10-03): 주소의 반 정보를 응답에 함께 보냄 + 화면 위에 어느 반 설문인지 표시
@@ -682,6 +685,7 @@ function renderHome(){
    개인관리 — 목록
 ========================================================= */
 async function renderStudentList(){
+  moaUse('care');
   document.getElementById('header-title').textContent = '개인관리';
   mainEl.innerHTML = '<button class="back-btn" id="back">← 홈으로</button><div id="student-list-body">불러오는 중...</div>';
   document.getElementById('back').onclick = () => { history.pushState({screen:'home'},''); renderHome(); };
@@ -718,6 +722,7 @@ async function renderStudentList(){
 }
 
 async function renderStudentDetail(id){
+  moaUse('care');
   document.getElementById('header-title').textContent = id ? '수강생 상세' : '수강생 추가';
   mainEl.innerHTML = '<button class="back-btn" id="back">← 목록으로</button><div id="detail-body">불러오는 중...</div>';
   document.getElementById('back').onclick = renderStudentList;
@@ -801,6 +806,7 @@ async function renderStudentDetail(id){
     const box = document.getElementById('checkin-box'); if(!box) return;
     const list = checkinList({joinDate: document.getElementById('f-joinDate').value, checkins: record.checkins});
     if(!list.length){ box.innerHTML = '<p class="lead" style="margin:6px 0 0;font-size:12.5px">입사일을 넣으면 입사 6개월·1년 축하 체크인 날짜가 자동으로 잡혀요.</p>'; return; }
+    moaUse('checkin');
     box.innerHTML = '<div class="ci-box"><h4>🎉 합격 후 체크인</h4>' + list.map(c => {
       const st = c.done ? '완료 ' + moaDate(c.done) : c.days > 0 ? 'D-' + c.days : c.days === 0 ? '오늘' : (-c.days) + '일 지남';
       return '<div class="ci-row"><div class="ci-l"><b>' + c.label + ' · ' + moaDate(c.date, 'week') + '</b><span class="ci-s">' + st + '</span></div>' +
@@ -812,6 +818,7 @@ async function renderStudentDetail(id){
   document.getElementById('f-joinDate').addEventListener('change', drawCheckins);
   document.getElementById('checkin-box').addEventListener('click', async (e) => {
     const m = e.target.closest('[data-cimsg]'), d = e.target.closest('[data-cidone]');
+    if(m || d) moaUse('checkin');
     if(m){
       const c = CHECKINS.find(x => x.k === m.dataset.cimsg);
       const text = checkinMsg(document.getElementById('f-name').value.trim(), c);
@@ -989,6 +996,7 @@ async function plCopy(text, done){
 }
 
 async function renderProgramList(){
+  moaUse('board');
   document.getElementById('header-title').textContent = '진로모아관리';
   mainEl.innerHTML = '<button class="back-btn" id="back">← 홈으로</button><div id="program-list-body">불러오는 중...</div>';
   document.getElementById('back').onclick = () => { history.pushState({screen:'home'},''); renderHome(); };
@@ -1011,6 +1019,7 @@ async function renderProgramList(){
 function drawProgramBoard(){
   const body = document.getElementById('program-list-body'); if(!body) return;
   const list = plFiltered(), st = plStats(list), rc = plRecontact(), t = todayIso();
+  if(PL.tab === 'call') moaUse('recontact');
   const fields = Array.from(new Set(PL_DATA.items.map(r => r.field).filter(Boolean))).sort();
   const chip = (on, attr, label) => `<button type="button" class="pl-chip" ${attr} aria-pressed="${on}">${label}</button>`;
   const kpi = (k, on, cls, val, label, sub) => `<button type="button" class="${cls}" data-kpi="${k}" aria-pressed="${on}"><b>${val}</b><span>${label}</span><small>${escapeHtml(String(sub))}</small></button>`;
@@ -1099,8 +1108,9 @@ function drawProgramBoard(){
   document.getElementById('add-program').onclick = () => renderProgramDetail(null);
   body.querySelectorAll('[data-pid]').forEach(d => d.onclick = () => renderProgramDetail(d.dataset.pid));
   body.querySelectorAll('[data-org]').forEach(d => d.onclick = () => { PL.open = PL.open === d.dataset.org ? '' : d.dataset.org; drawProgramBoard(); });
-  body.querySelectorAll('[data-rcmsg]').forEach(b => b.onclick = () => plCopy(plMsg(rc[+b.dataset.rcmsg]), '연락 문안을 복사했어요. 카톡·문자·메일에 붙여 넣으세요.'));
+  body.querySelectorAll('[data-rcmsg]').forEach(b => b.onclick = () => moaUse('recontact') || plCopy(plMsg(rc[+b.dataset.rcmsg]), '연락 문안을 복사했어요. 카톡·문자·메일에 붙여 넣으세요.'));
   body.querySelectorAll('[data-rcdone]').forEach(b => b.onclick = async () => {
+    moaUse('recontact');
     const g = rc[+b.dataset.rcdone], rec = Object.assign({}, g.last, { contactedAt: new Date().toISOString() });
     b.disabled = true; b.textContent = '저장 중...';
     try{
@@ -1109,18 +1119,21 @@ function drawProgramBoard(){
     }catch(e){ alert('저장하지 못했어요. 잠시 뒤 다시 눌러 주세요.'); b.disabled = false; b.textContent = '연락함'; }
   });
   const rows = plRows(list);
-  document.getElementById('pl-copy').onclick = () => plCopy(['일자\t기관\t프로그램\t시간\t인원\t만족도'].concat(rows.map(r => [moaDate(r.date), r.org, r.prog, r.hours, r.people, r.sat].join('\t'))).join('\n'), '실적표 ' + rows.length + '건을 복사했어요. 표에 붙여 넣으면 칸이 나뉘어 들어가요.');
+  document.getElementById('pl-copy').onclick = () => moaUse('proof') || plCopy(['일자\t기관\t프로그램\t시간\t인원\t만족도'].concat(rows.map(r => [moaDate(r.date), r.org, r.prog, r.hours, r.people, r.sat].join('\t'))).join('\n'), '실적표 ' + rows.length + '건을 복사했어요. 표에 붙여 넣으면 칸이 나뉘어 들어가요.');
   document.getElementById('pl-csv').onclick = () => {
+    moaUse('proof');
     const q = (x) => '"' + String(x == null ? '' : x).replace(/"/g, '""') + '"';
     plDownload('진로모아_교육실적_' + todayIso() + '.csv', '﻿' + [['일자','기관','프로그램','분야','시간','인원','만족도','응답수'].map(q).join(',')].concat(rows.map(r => [r.date, r.org, r.prog, r.field, r.hours, r.people, r.sat, r.n].map(q).join(','))).join('\r\n'), 'text/csv');
   };
   document.getElementById('pl-best').onclick = () => {
+    moaUse('proof');
     const pool = [].concat(...list.map(r => (PL_DATA.survey[r.id] || []).map(i => ({ c: String(i.comment || '').trim().replace(/\s*\n+\s*/g, ' '), s: +i.satisfaction || 0, org: r.orgName }))))
       .filter(x => x.c.length >= 10).sort((a,b) => b.s - a.s || b.c.length - a.c.length).slice(0, 5);
     if(!pool.length){ alert('아직 고를 만한 소감(10자 이상)이 없어요.'); return; }
     plCopy(pool.map(x => '“' + x.c + '” — ' + (plIsPersonal({orgName:x.org}) ? '개인 수강생' : x.org + ' 수강생')).join('\n'), '베스트 소감 ' + pool.length + '개를 복사했어요.');
   };
   document.getElementById('pl-print').onclick = () => {
+    moaUse('proof');
     const w = window.open('', '_blank'); if(!w){ alert('팝업이 막혀 있어요. 팝업을 허용해 주세요.'); return; }
     const period = PL.period === 'year' ? new Date().getFullYear() + '년' : '전체 기간';
     const ds = plStats(list.filter(r => r.date && r.date <= todayIso()));  // 끝난 강의만으로 합계
@@ -1141,6 +1154,7 @@ function drawProgramBoard(){
 }
 
 async function renderProgramDetail(id){
+  moaUse('program');
   document.getElementById('header-title').textContent = id ? '프로그램 상세' : '프로그램 추가';
   mainEl.innerHTML = '<button class="back-btn" id="back">← 목록으로</button><div id="detail-body">불러오는 중...</div>';
   document.getElementById('back').onclick = renderProgramList;
