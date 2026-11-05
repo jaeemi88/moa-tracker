@@ -339,7 +339,7 @@ function renderSurveyScreen(){
   const slotLab = [params.get('lt'), params.get('sl')].map(x => String(x || '').trim()).filter(Boolean).join(' · ');
   const slotChip = slotLab ? `<p class="sub" style="margin:-14px 0 22px"><span style="display:inline-block;background:var(--moa-lime-soft,#EEF4C2);color:var(--moa-olive,#3D4500);font-weight:700;border-radius:999px;padding:4px 12px">${escapeHtml(slotLab)}</span></p>` : '';
   const SELFQ = [['conf1','면접 질문에 자신 있게 답할 수 있다'],['conf2','나의 경험으로 자기소개서를 쓸 수 있다']];
-  const starRow = (f) => `<div class="stars" data-field="${f}">${[1,2,3,4,5].map(n=>`<span data-v="${n}"></span>`).join('')}</div>`;
+  const starRow = (f) => `<div class="stars" data-field="${f}">${[1,2,3,4,5].map(n=>`<span data-v="${n}">★</span>`).join('')}</div>`;
   const selfHtml = SELFQ.map(q => `<label>${q[1]}</label>${starRow(q[0])}`).join('');
   if(PRE){
     let pr = { conf1:0, conf2:0 };
@@ -370,11 +370,11 @@ function renderSurveyScreen(){
       <p class="sub">1분이면 끝나요. 별점과 짧은 소감을 남겨주세요. 이름은 받지 않아요.</p>
       ${slotChip}
       <label>전반적인 만족도</label>
-      <div class="stars" data-field="satisfaction">${[1,2,3,4,5].map(n=>`<span data-v="${n}"></span>`).join('')}</div>
+      <div class="stars" data-field="satisfaction">${[1,2,3,4,5].map(n=>`<span data-v="${n}">★</span>`).join('')}</div>
       <label>강사의 태도·전달력</label>
-      <div class="stars" data-field="attitude">${[1,2,3,4,5].map(n=>`<span data-v="${n}"></span>`).join('')}</div>
+      <div class="stars" data-field="attitude">${[1,2,3,4,5].map(n=>`<span data-v="${n}">★</span>`).join('')}</div>
       <label>실제로 도움이 되었나요</label>
-      <div class="stars" data-field="helpfulness">${[1,2,3,4,5].map(n=>`<span data-v="${n}"></span>`).join('')}</div>
+      <div class="stars" data-field="helpfulness">${[1,2,3,4,5].map(n=>`<span data-v="${n}">★</span>`).join('')}</div>
       ${SE ? `<div class="rv-guide" style="margin-top:14px"><b>교육을 마친 지금, 나는?</b> (1점 전혀 아니다 · 5점 매우 그렇다)</div>${selfHtml}` : ''}
       <label>오늘 강의 소감</label>
       <div class="rv-guide">이런 내용을 적어주시면 좋아요<br>· 오늘 새롭게 알게 된 점<br>· 앞으로 해보고 싶은 것<br>· 강사님께 하고 싶은 말</div>
